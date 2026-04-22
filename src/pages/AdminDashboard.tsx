@@ -7,7 +7,7 @@ import {
   XCircle, Award, Leaf, CheckCircle2, Package, Plus, Trash2, UploadCloud,
   Tag, Image, Calendar, MapPin, Users, Settings, ChevronRight, X, Phone, Mail,
   Megaphone, ToggleLeft, ToggleRight, ShoppingBag, Truck, Clock, CheckCheck,
-  ChevronDown, ChevronUp, ExternalLink
+  ChevronDown, ChevronUp, ExternalLink, Gift, Star
 } from 'lucide-react';
 
 // ── Order Card sub-component (needs own state hooks) ──
@@ -172,7 +172,7 @@ function OrderCard({
 }
 
 
-type Tab = 'submissions' | 'products' | 'banners' | 'events' | 'orders' | 'settings';
+type Tab = 'submissions' | 'products' | 'banners' | 'events' | 'orders' | 'vouchers' | 'partner_merch' | 'settings';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -222,6 +222,19 @@ export default function AdminDashboard() {
   const [orderUpdating, setOrderUpdating] = useState<string | null>(null);
   const ADMIN_EMAIL = 'admin@teczgreen.com'; // ← change to real admin email
 
+  // ── Vouchers ──
+  const [vouchers, setVouchers] = useState<any[]>([]);
+  const [addingVoucher, setAddingVoucher] = useState(false);
+  const [voucherForm, setVoucherForm] = useState({ title: '', description: '', brand_name: '', points_cost: '', promo_code: '' });
+
+  // ── Partner Merch ──
+  const [partnerProducts, setPartnerProducts] = useState<any[]>([]);
+  const [addingPartnerProduct, setAddingPartnerProduct] = useState(false);
+  const [partnerProductForm, setPartnerProductForm] = useState({ event_id: '', partner_name: '', name: '', description: '', price: '', stock: '' });
+  const [partnerProductImageFile, setPartnerProductImageFile] = useState<File | null>(null);
+  const [partnerProductImagePreview, setPartnerProductImagePreview] = useState<string | null>(null);
+  const partnerProductFileRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     if (profileRole && profileRole !== 'admin') { navigate('/dashboard'); return; }
     if (profileRole === 'admin') {
@@ -231,6 +244,8 @@ export default function AdminDashboard() {
       fetchEvents();
       fetchSettings();
       fetchOrders();
+      fetchVouchers();
+      fetchPartnerProducts();
     }
   }, [profileRole, navigate]);
 
@@ -396,6 +411,69 @@ export default function AdminDashboard() {
     setOrderUpdating(null);
   };
 
+  // ─── Vouchers ───
+  const fetchVouchers = async () => {
+    const { data } = await supabase.from('vouchers').select('*').order('created_at', { ascending: false });
+    if (data) setVouchers(data);
+  };
+  const handleAddVoucher = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAddingVoucher(true);
+    try {
+      await supabase.from('vouchers').insert({
+        title: voucherForm.title,
+        description: voucherForm.description,
+        brand_name: voucherForm.brand_name,
+        points_cost: parseInt(voucherForm.points_cost, 10),
+        promo_code: voucherForm.promo_code || null,
+        is_active: true
+      });
+      setVoucherForm({ title: '', description: '', brand_name: '', points_cost: '', promo_code: '' });
+      fetchVouchers();
+    } catch (e: any) { alert(e.message); } finally { setAddingVoucher(false); }
+  };
+  const toggleVoucher = async (id: string, current: boolean) => {
+    await supabase.from('vouchers').update({ is_active: !current }).eq('id', id);
+    fetchVouchers();
+  };
+  const deleteVoucher = async (id: string) => {
+    if (!confirm('Delete this voucher?')) return;
+    await supabase.from('vouchers').delete().eq('id', id);
+    fetchVouchers();
+  };
+
+  // ─── Partner Merch ───
+  const fetchPartnerProducts = async () => {
+    const { data } = await supabase.from('partner_products').select('*, events(title)').order('created_at', { ascending: false });
+    if (data) setPartnerProducts(data);
+  };
+  const handleAddPartnerProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAddingPartnerProduct(true);
+    try {
+      let imageUrl = '';
+      if (partnerProductImageFile) imageUrl = await uploadImage(partnerProductImageFile, 'waste-images', 'partner-products/');
+      await supabase.from('partner_products').insert({
+        event_id: partnerProductForm.event_id,
+        partner_name: partnerProductForm.partner_name,
+        name: partnerProductForm.name,
+        description: partnerProductForm.description,
+        price: parseFloat(partnerProductForm.price),
+        stock: parseInt(partnerProductForm.stock || '0', 10),
+        image_url: imageUrl
+      });
+      setPartnerProductForm({ event_id: '', partner_name: '', name: '', description: '', price: '', stock: '' });
+      setPartnerProductImageFile(null); setPartnerProductImagePreview(null);
+      if (partnerProductFileRef.current) partnerProductFileRef.current.value = '';
+      fetchPartnerProducts();
+    } catch (e: any) { alert(e.message); } finally { setAddingPartnerProduct(false); }
+  };
+  const deletePartnerProduct = async (id: string) => {
+    if (!confirm('Delete this partner product?')) return;
+    await supabase.from('partner_products').delete().eq('id', id);
+    fetchPartnerProducts();
+  };
+
   if (!profileRole || submissionsLoading) {
     return <div className="flex justify-center items-center py-32"><div className="w-10 h-10 border-4 border-[#2e7d32] border-t-transparent rounded-full animate-spin"></div></div>;
   }
@@ -407,6 +485,8 @@ export default function AdminDashboard() {
     { id: 'banners', label: 'Banners', icon: <Megaphone className="w-4 h-4" /> },
     { id: 'events', label: 'Events', icon: <Calendar className="w-4 h-4" /> },
     { id: 'orders', label: 'Orders', icon: <ShoppingBag className="w-4 h-4" />, badge: orders.filter((o:any) => !o.shipped).length || undefined },
+    { id: 'vouchers', label: 'Vouchers', icon: <Tag className="w-4 h-4" /> },
+    { id: 'partner_merch', label: 'Partner Merch', icon: <Gift className="w-4 h-4" /> },
     { id: 'settings', label: 'Settings', icon: <Settings className="w-4 h-4" /> },
   ];
 
@@ -719,6 +799,142 @@ export default function AdminDashboard() {
               />
             ))
           )}
+        </div>
+      )}
+
+      {/* ═══ VOUCHERS TAB ═══ */}
+      {activeTab === 'vouchers' && (
+        <div className="grid lg:grid-cols-5 gap-8">
+          <div className="lg:col-span-2">
+            <div className="glass-panel p-8 sticky top-24">
+              <h2 className="text-xl font-bold text-[#1a3d1f] mb-6 flex items-center gap-2"><Tag className="w-5 h-5 text-[#2e7d32]" /> Create Voucher</h2>
+              <form onSubmit={handleAddVoucher} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-bold text-[#2d4a30] mb-1.5">Brand Name *</label>
+                  <input required value={voucherForm.brand_name} onChange={e => setVoucherForm(f => ({ ...f, brand_name: e.target.value }))} placeholder="e.g. Amazon" className="input-glass" />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-[#2d4a30] mb-1.5">Voucher Title *</label>
+                  <input required value={voucherForm.title} onChange={e => setVoucherForm(f => ({ ...f, title: e.target.value }))} placeholder="e.g. ₹500 Gift Card" className="input-glass" />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-[#2d4a30] mb-1.5">Description</label>
+                  <textarea rows={2} value={voucherForm.description} onChange={e => setVoucherForm(f => ({ ...f, description: e.target.value }))} className="input-glass resize-none" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-bold text-[#2d4a30] mb-1.5">Points Cost *</label>
+                    <input required type="number" min="1" value={voucherForm.points_cost} onChange={e => setVoucherForm(f => ({ ...f, points_cost: e.target.value }))} placeholder="50" className="input-glass" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-[#2d4a30] mb-1.5">Base Promo Code</label>
+                    <input value={voucherForm.promo_code} onChange={e => setVoucherForm(f => ({ ...f, promo_code: e.target.value }))} placeholder="e.g. AMZ500" className="input-glass" />
+                  </div>
+                </div>
+                <button type="submit" disabled={addingVoucher} className="btn-primary w-full flex items-center justify-center gap-2 !py-3 disabled:opacity-50">
+                  {addingVoucher ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Adding...</> : <><Tag className="w-4 h-4" /> Add Voucher</>}
+                </button>
+              </form>
+            </div>
+          </div>
+          <div className="lg:col-span-3">
+            <h2 className="text-xl font-bold text-[#1a3d1f] mb-6 flex items-center gap-2"><Gift className="w-5 h-5" /> Active Vouchers ({vouchers.length})</h2>
+            {vouchers.length === 0 ? <div className="glass-panel p-16 text-center"><Tag className="w-12 h-12 text-[rgba(46,125,50,0.2)] mx-auto mb-3" /><p className="text-[#5f7a60]">No vouchers created yet.</p></div> : (
+              <div className="space-y-4">
+                {vouchers.map((v: any) => (
+                  <div key={v.id} className="glass-card p-4 flex gap-4 items-center">
+                    <div className="flex-grow min-w-0">
+                      <h3 className="font-bold text-[#1a3d1f]">{v.title} <span className="text-sm font-normal text-[#5f7a60]">({v.brand_name})</span></h3>
+                      <p className="text-xs text-[#5f7a60] line-clamp-1 mt-1">{v.description}</p>
+                      <div className="flex items-center gap-3 mt-2">
+                        <span className="font-black text-[#ffb300] text-sm flex items-center gap-1"><Star className="w-3.5 h-3.5 fill-[#ffb300]" /> {v.points_cost} pts</span>
+                        {v.promo_code && <span className="text-xs font-mono font-bold bg-gray-100 px-2 py-0.5 rounded">{v.promo_code}</span>}
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${v.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'}`}>{v.is_active ? 'Active' : 'Hidden'}</span>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 flex-shrink-0">
+                      <button onClick={() => toggleVoucher(v.id, v.is_active)} className="p-2 rounded-xl hover:bg-[rgba(46,125,50,0.1)] text-[#2e7d32] cursor-pointer">
+                        {v.is_active ? <ToggleRight className="w-5 h-5" /> : <ToggleLeft className="w-5 h-5 text-gray-400" />}
+                      </button>
+                      <button onClick={() => deleteVoucher(v.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-xl cursor-pointer"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ═══ PARTNER MERCH TAB ═══ */}
+      {activeTab === 'partner_merch' && (
+        <div className="grid lg:grid-cols-5 gap-8">
+          <div className="lg:col-span-2">
+            <div className="glass-panel p-8 sticky top-24">
+              <h2 className="text-xl font-bold text-[#1a3d1f] mb-6 flex items-center gap-2"><Plus className="w-5 h-5 text-[#2e7d32]" /> Add Partner Merch</h2>
+              <form onSubmit={handleAddPartnerProduct} className="space-y-4">
+                <ImageUploadBox preview={partnerProductImagePreview} inputRef={partnerProductFileRef} label="Product Image" onFile={f => { setPartnerProductImageFile(f); setPartnerProductImagePreview(URL.createObjectURL(f)); }} />
+                <div>
+                  <label className="block text-sm font-bold text-[#2d4a30] mb-1.5">Link to Event *</label>
+                  <select required value={partnerProductForm.event_id} onChange={e => setPartnerProductForm(f => ({ ...f, event_id: e.target.value }))} className="input-glass w-full">
+                    <option value="">-- Select Event --</option>
+                    {events.map((ev: any) => (
+                      <option key={ev.id} value={ev.id}>{ev.title}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-[#2d4a30] mb-1.5">Partner Name *</label>
+                  <input required value={partnerProductForm.partner_name} onChange={e => setPartnerProductForm(f => ({ ...f, partner_name: e.target.value }))} placeholder="e.g. EcoBrand" className="input-glass" />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-[#2d4a30] mb-1.5">Product Name *</label>
+                  <input required value={partnerProductForm.name} onChange={e => setPartnerProductForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Recycled Notebook" className="input-glass" />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-[#2d4a30] mb-1.5">Description</label>
+                  <textarea rows={2} value={partnerProductForm.description} onChange={e => setPartnerProductForm(f => ({ ...f, description: e.target.value }))} className="input-glass resize-none" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-bold text-[#2d4a30] mb-1.5">Price (₹) *</label>
+                    <input required type="number" min="0" step="0.01" value={partnerProductForm.price} onChange={e => setPartnerProductForm(f => ({ ...f, price: e.target.value }))} placeholder="9.99" className="input-glass" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-[#2d4a30] mb-1.5">Stock</label>
+                    <input type="number" min="0" value={partnerProductForm.stock} onChange={e => setPartnerProductForm(f => ({ ...f, stock: e.target.value }))} placeholder="0" className="input-glass" />
+                  </div>
+                </div>
+                <button type="submit" disabled={addingPartnerProduct} className="btn-primary w-full flex items-center justify-center gap-2 !py-3 disabled:opacity-50">
+                  {addingPartnerProduct ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Adding...</> : <><Gift className="w-4 h-4" /> Add Partner Product</>}
+                </button>
+              </form>
+            </div>
+          </div>
+          <div className="lg:col-span-3">
+            <h2 className="text-xl font-bold text-[#1a3d1f] mb-6 flex items-center gap-2"><Gift className="w-5 h-5" /> Partner Products ({partnerProducts.length})</h2>
+            {partnerProducts.length === 0 ? <div className="glass-panel p-16 text-center"><Gift className="w-12 h-12 text-[rgba(46,125,50,0.2)] mx-auto mb-3" /><p className="text-[#5f7a60]">No partner products yet.</p></div> : (
+              <div className="space-y-4">
+                {partnerProducts.map((p: any) => (
+                  <div key={p.id} className="glass-card p-4 flex gap-4 items-center">
+                    <img src={p.image_url || 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=200&q=80'} alt={p.name} className="w-20 h-20 object-cover rounded-xl flex-shrink-0" />
+                    <div className="flex-grow min-w-0">
+                      <div className="flex gap-2 items-center mb-1">
+                        <span className="bg-amber-100 text-amber-700 text-[10px] font-black uppercase px-2 py-0.5 rounded tracking-wide">{p.partner_name}</span>
+                        <span className="text-xs text-[#5f7a60] truncate">Event: {p.events?.title}</span>
+                      </div>
+                      <h3 className="font-bold text-[#1a3d1f] truncate">{p.name}</h3>
+                      <div className="flex items-center gap-3 mt-1.5">
+                        <span className="font-black text-[#2e7d32]" style={{ fontFamily: 'Outfit,sans-serif' }}>₹{Number(p.price).toFixed(2)}</span>
+                        <span className="text-xs text-[#5f7a60] bg-[rgba(46,125,50,0.08)] border border-[rgba(46,125,50,0.15)] px-2 py-0.5 rounded-lg">Stock: {p.stock}</span>
+                      </div>
+                    </div>
+                    <button onClick={() => deletePartnerProduct(p.id)} className="flex-shrink-0 p-2.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-xl transition-colors cursor-pointer"><Trash2 className="w-5 h-5" /></button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 

@@ -54,7 +54,6 @@ export default function Checkout() {
     }
   }, [user]);
 
-  // Max points user can use (can't exceed total order)
   const maxPointsDiscount = Math.min(totalPoints, Math.floor(totalAmount / pointToRs));
   const discountAmount = usePoints ? pointsToRedeem * pointToRs : 0;
   const finalAmount = Math.max(0, totalAmount - discountAmount);
@@ -64,11 +63,22 @@ export default function Checkout() {
     setStep(2);
   };
 
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
   const handlePaymentSubmit = async () => {
     if (!user) return;
     setLoading(true);
+
     try {
-      // 1. Save Address
+      // 1. Save Address first
       const { data: addressData, error: addressError } = await supabase
         .from('user_addresses')
         .insert({ user_id: user.id, ...address })
@@ -76,63 +86,155 @@ export default function Checkout() {
         .single();
       if (addressError) throw addressError;
 
-      // 2. Create Order with final amount
+      // If finalAmount is 0 (fully covered by points), skip Razorpay
+      if (finalAmount <= 0) {
+        await finalizeOrder(addressData.id, null, null, null);
+        return;
+      }
+
+      // 2. Load Razorpay script
+      const res = await loadRazorpayScript();
+      if (!res) {
+        alert("Razorpay SDK failed to load. Are you online?");
+        setLoading(false);
+        return;
+      }
+
+      // 3. Create order on our backend
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+      const orderResponse = await fetch(`${backendUrl}/api/create-order`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: finalAmount, currency: 'INR', receipt: `rcpt_${user.id.substring(0, 8)}_${Date.now().toString().slice(-6)}` })
+      });
+      const orderData = await orderResponse.json();
+
+      if (!orderData || !orderData.id) {
+        alert('Server error. Please try again.');
+        setLoading(false);
+        return;
+      }
+
+      // 4. Initialize Razorpay Checkout
+      const options = {
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: "TechzGreen",
+        description: "Eco-friendly products purchase",
+        order_id: orderData.id,
+        handler: async function (response: any) {
+          try {
+            // 5. Verify payment signature on backend
+            const verifyResponse = await fetch(`${backendUrl}/api/verify-payment`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature
+              })
+            });
+            const verifyData = await verifyResponse.json();
+
+            if (verifyData.verified) {
+              // 6. Complete Order
+              await finalizeOrder(addressData.id, response.razorpay_order_id, response.razorpay_payment_id, response.razorpay_signature);
+            } else {
+              alert('Payment verification failed!');
+            }
+          } catch (err) {
+            console.error('Verification error:', err);
+            alert('Payment verification error.');
+          }
+        },
+        prefill: {
+          name: address.fullname,
+          email: user.email,
+        },
+        theme: {
+          color: "#2e7d32"
+        }
+      };
+
+      const paymentObject = new (window as any).Razorpay(options);
+      paymentObject.open();
+      setLoading(false);
+
+    } catch (error) {
+      console.error('Payment flow failed:', error);
+      alert('Failed to process. Please try again.');
+      setLoading(false);
+    }
+  };
+
+  const finalizeOrder = async (addressId: string, rzp_order_id: string | null, rzp_payment_id: string | null, rzp_signature: string | null) => {
+    if (!user) return;
+    try {
+      setLoading(true);
+      // Create Order with final amount and razorpay details
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
         .insert({
           user_id: user.id,
-          address_id: addressData.id,
+          address_id: addressId,
           total_amount: finalAmount,
           status: 'paid',
+          points_used: usePoints ? pointsToRedeem : 0,
+          points_discount_amount: discountAmount,
+          razorpay_order_id: rzp_order_id,
+          razorpay_payment_id: rzp_payment_id,
+          razorpay_signature: rzp_signature
         })
         .select()
         .single();
-      if (orderError) throw orderError;
+      
+      if (orderError) {
+        console.error('Order Insert Error Details:', orderError);
+        throw orderError;
+      }
 
-      // 3. Create Order Items
+      // Create Order Items
       const { error: itemsError } = await supabase
         .from('order_items')
         .insert(items.map(item => ({
           order_id: orderData.id,
-          product_id: item.product.id,
+          product_id: (item.product as any).isPartnerProduct ? null : item.product.id,
+          partner_product_id: (item.product as any).isPartnerProduct ? item.product.id : null,
           quantity: item.quantity,
           price_at_time: item.product.price,
         })));
-      if (itemsError) throw itemsError;
+      
+      if (itemsError) {
+        console.error('Items Insert Error Details:', itemsError);
+        throw itemsError;
+      }
 
-      // 4. Decrement stock for each product
+      // Decrement stock
       await Promise.all(items.map(async item => {
-        const { data: prod } = await supabase
-          .from('products')
-          .select('stock')
-          .eq('id', item.product.id)
-          .single();
+        const table = (item.product as any).isPartnerProduct ? 'partner_products' : 'products';
+        const { data: prod } = await supabase.from(table).select('stock').eq('id', item.product.id).single();
         if (prod && prod.stock > 0) {
-          await supabase
-            .from('products')
-            .update({ stock: Math.max(0, prod.stock - item.quantity) })
-            .eq('id', item.product.id);
+          await supabase.from(table).update({ stock: Math.max(0, prod.stock - item.quantity) }).eq('id', item.product.id);
         }
       }));
 
-      // 5. Deduct points if used
+      // Deduct points
       if (usePoints && pointsToRedeem > 0) {
-        const { error: ledgerError } = await supabase
-          .from('points_ledger')
-          .insert({
-            user_id: user.id,
-            points_change: -pointsToRedeem,
-            description: `Redeemed ${pointsToRedeem} pts for ₹${discountAmount.toFixed(2)} discount on Order #${orderData.id.substring(0, 8).toUpperCase()}`,
-          });
+        const { error: ledgerError } = await supabase.from('points_ledger').insert({
+          user_id: user.id,
+          points_change: -pointsToRedeem,
+          description: `Redeemed ${pointsToRedeem} pts for ₹${discountAmount.toFixed(2)} discount on Order #${orderData.id.substring(0, 8).toUpperCase()}`,
+        });
         if (ledgerError) throw ledgerError;
-        await refreshPoints(); // Update navbar/dashboard points live
+        await refreshPoints();
       }
 
       clearCart();
       navigate(`/order-confirmation/${orderData.id}`);
     } catch (error) {
-      console.error('Order failed:', error);
-      alert('Failed to process order. Please try again.');
+      console.error('Finalizing order failed FULL ERROR:', error);
+      alert('Order placed but failed to update status. Please contact support.');
     } finally {
       setLoading(false);
     }

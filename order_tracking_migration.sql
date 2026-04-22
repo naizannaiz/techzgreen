@@ -26,17 +26,31 @@ CREATE TRIGGER trg_set_shipped_at
   BEFORE UPDATE ON public.orders
   FOR EACH ROW EXECUTE FUNCTION set_shipped_at();
 
--- Ensure users can read their own orders (including new columns)
--- (These policies should already exist, but just in case)
-CREATE POLICY IF NOT EXISTS "Users can view their orders"
-  ON public.orders FOR SELECT
-  USING (auth.uid() = user_id);
+-- Ensure users can read their own orders (safe upsert pattern)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public' AND tablename = 'orders'
+    AND policyname = 'Users can view their orders'
+  ) THEN
+    EXECUTE 'CREATE POLICY "Users can view their orders"
+      ON public.orders FOR SELECT
+      USING (auth.uid() = user_id)';
+  END IF;
 
-CREATE POLICY IF NOT EXISTS "Admins can update orders"
-  ON public.orders FOR UPDATE
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.profiles
-      WHERE id = auth.uid() AND role = 'admin'
-    )
-  );
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public' AND tablename = 'orders'
+    AND policyname = 'Admins can update orders'
+  ) THEN
+    EXECUTE 'CREATE POLICY "Admins can update orders"
+      ON public.orders FOR UPDATE
+      USING (
+        EXISTS (
+          SELECT 1 FROM public.profiles
+          WHERE id = auth.uid() AND role = ''admin''
+        )
+      )';
+  END IF;
+END$$;

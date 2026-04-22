@@ -7,4 +7,10 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables');
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// In development, route through Vite proxy to bypass CORS
+const clientUrl =
+  import.meta.env.DEV
+    ? `${window.location.origin}/supabase-api`
+    : supabaseUrl;
+
+export const supabase = createClient(clientUrl, supabaseAnonKey);

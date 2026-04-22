@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
-import { Calendar, MapPin, Users, ArrowRight, Leaf, CheckCircle2 } from 'lucide-react';
+import { Calendar, MapPin, Users, ArrowRight, Leaf, CheckCircle2, ShoppingBag } from 'lucide-react';
 import EventRegistrationModal from '../components/EventRegistrationModal';
+import { useCart } from '../context/CartContext';
 
 type Event = {
   id: string;
@@ -17,12 +18,14 @@ type Event = {
 
 export default function Events() {
   const { user } = useAuth();
+  const { addToCart } = useCart();
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [registeredIds, setRegisteredIds] = useState<string[]>([]);
   const [registrationCounts, setRegistrationCounts] = useState<Record<string, number>>({});
   const [successId, setSuccessId] = useState<string | null>(null);
+  const [partnerProducts, setPartnerProducts] = useState<Record<string, any[]>>({});
 
   useEffect(() => {
     fetchEvents();
@@ -40,6 +43,8 @@ export default function Events() {
       .order('event_date', { ascending: true });
     if (data) {
       setEvents(data as Event[]);
+      const eventIds = data.map((e: any) => e.id);
+      
       // Fetch registration counts
       const counts: Record<string, number> = {};
       await Promise.all((data as Event[]).map(async ev => {
@@ -50,6 +55,19 @@ export default function Events() {
         counts[ev.id] = count || 0;
       }));
       setRegistrationCounts(counts);
+
+      // Fetch partner products
+      if (eventIds.length > 0) {
+        const { data: prodData } = await supabase.from('partner_products').select('*').in('event_id', eventIds);
+        if (prodData) {
+          const grouped: Record<string, any[]> = {};
+          prodData.forEach(p => {
+            if(!grouped[p.event_id]) grouped[p.event_id] = [];
+            grouped[p.event_id].push({...p, isPartnerProduct: true}); // Tag it for Cart
+          });
+          setPartnerProducts(grouped);
+        }
+      }
     }
     setLoading(false);
   };
@@ -174,6 +192,37 @@ export default function Events() {
                       </button>
                     )}
                   </div>
+
+                  {/* Partner Products Section */}
+                  {partnerProducts[event.id] && partnerProducts[event.id].length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-[rgba(46,125,50,0.1)]">
+                      <h4 className="text-xs font-bold text-[#1a3d1f] uppercase tracking-wider mb-3 flex items-center gap-1">
+                        <ShoppingBag className="w-3.5 h-3.5" /> Event Merch
+                      </h4>
+                      <div className="space-y-3">
+                        {partnerProducts[event.id].map(product => (
+                          <div key={product.id} className="flex gap-3 items-center bg-white p-2 rounded-lg border border-gray-100 shadow-sm">
+                            {product.image_url && <img src={product.image_url} alt={product.name} className="w-12 h-12 object-cover rounded-md" />}
+                            <div className="flex-grow min-w-0">
+                              <p className="text-sm font-bold text-[#1a3d1f] truncate">{product.name}</p>
+                              <p className="text-xs text-[#2e7d32] font-black">${product.price}</p>
+                            </div>
+                            <button 
+                              onClick={() => {
+                                addToCart(product);
+                                alert(`${product.name} added to cart!`);
+                              }}
+                              className="bg-[rgba(46,125,50,0.1)] text-[#2e7d32] hover:bg-[#2e7d32] hover:text-white p-2 rounded-lg transition-colors cursor-pointer"
+                              title="Add to Cart"
+                            >
+                              <ShoppingBag className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                 </div>
               </div>
             );

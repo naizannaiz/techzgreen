@@ -280,3 +280,90 @@ DO $$ BEGIN
     CREATE POLICY "All app_settings" ON public.app_settings FOR ALL USING (true);
   END IF;
 END $$;
+
+-- =====================================================
+-- RAZORPAY & REWARDS SYSTEM UPDATE
+-- =====================================================
+
+-- Add Razorpay and Points tracking to Orders
+DO $$ BEGIN
+    ALTER TABLE public.orders ADD COLUMN razorpay_order_id TEXT;
+EXCEPTION WHEN duplicate_column THEN NULL; END $$;
+DO $$ BEGIN
+    ALTER TABLE public.orders ADD COLUMN razorpay_payment_id TEXT;
+EXCEPTION WHEN duplicate_column THEN NULL; END $$;
+DO $$ BEGIN
+    ALTER TABLE public.orders ADD COLUMN razorpay_signature TEXT;
+EXCEPTION WHEN duplicate_column THEN NULL; END $$;
+DO $$ BEGIN
+    ALTER TABLE public.orders ADD COLUMN points_used INTEGER DEFAULT 0;
+EXCEPTION WHEN duplicate_column THEN NULL; END $$;
+DO $$ BEGIN
+    ALTER TABLE public.orders ADD COLUMN points_discount_amount DECIMAL(10,2) DEFAULT 0;
+EXCEPTION WHEN duplicate_column THEN NULL; END $$;
+
+-- Vouchers Table
+CREATE TABLE IF NOT EXISTS public.vouchers (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  title TEXT NOT NULL,
+  description TEXT,
+  points_cost INTEGER NOT NULL,
+  brand_name TEXT NOT NULL,
+  promo_code TEXT NOT NULL,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- User Vouchers (Redeemed vouchers)
+CREATE TABLE IF NOT EXISTS public.user_vouchers (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+  voucher_id UUID REFERENCES public.vouchers(id) ON DELETE CASCADE,
+  redeemed_at TIMESTAMPTZ DEFAULT NOW(),
+  is_used BOOLEAN DEFAULT false
+);
+
+-- Partner Products (Event Collabs)
+CREATE TABLE IF NOT EXISTS public.partner_products (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  event_id UUID REFERENCES public.events(id) ON DELETE CASCADE,
+  partner_name TEXT NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT,
+  price DECIMAL(10,2) NOT NULL,
+  image_url TEXT,
+  stock INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Allow order_items to link to partner_products instead of regular products
+DO $$ BEGIN
+    ALTER TABLE public.order_items ALTER COLUMN product_id DROP NOT NULL;
+EXCEPTION WHEN OTHERS THEN NULL; END $$;
+
+DO $$ BEGIN
+    ALTER TABLE public.order_items ADD COLUMN partner_product_id UUID REFERENCES public.partner_products(id) ON DELETE SET NULL;
+EXCEPTION WHEN duplicate_column THEN NULL; END $$;
+
+-- RLS for new tables
+ALTER TABLE public.vouchers ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='vouchers' AND policyname='All vouchers') THEN
+    CREATE POLICY "All vouchers" ON public.vouchers FOR ALL USING (true);
+  END IF;
+END $$;
+
+ALTER TABLE public.user_vouchers ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='user_vouchers' AND policyname='All user_vouchers') THEN
+    CREATE POLICY "All user_vouchers" ON public.user_vouchers FOR ALL USING (true);
+  END IF;
+END $$;
+
+ALTER TABLE public.partner_products ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='partner_products' AND policyname='All partner_products') THEN
+    CREATE POLICY "All partner_products" ON public.partner_products FOR ALL USING (true);
+  END IF;
+END $$;
+

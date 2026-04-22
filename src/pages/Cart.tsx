@@ -28,7 +28,7 @@ export default function Cart() {
         <ul className="divide-y divide-gray-100">
           {items.map(({ product, quantity }) => (
             <li key={product.id} className="p-6 flex flex-col sm:flex-row items-center gap-6 hover:bg-gray-50 transition-colors">
-              <img src={product.imageUrl} alt={product.name} className="w-24 h-24 object-cover rounded-lg border border-gray-200" />
+              <img src={product.image_url} alt={product.name} className="w-24 h-24 object-cover rounded-lg border border-gray-200" />
               <div className="flex-grow text-center sm:text-left">
                 <h3 className="font-bold text-xl text-[#1b5e20] mb-1">{product.name}</h3>
                 <p className="font-semibold text-gray-700">${Number(product.price).toFixed(2)}</p>
