@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { Calendar, MapPin, Users, ArrowRight, Leaf, CheckCircle2, ShoppingBag } from 'lucide-react';
@@ -45,15 +46,17 @@ export default function Events() {
       setEvents(data as Event[]);
       const eventIds = data.map((e: any) => e.id);
       
-      // Fetch registration counts
+      // Fetch registration counts — single batch query instead of N queries
       const counts: Record<string, number> = {};
-      await Promise.all((data as Event[]).map(async ev => {
-        const { count } = await supabase
+      if (eventIds.length > 0) {
+        const { data: regData } = await supabase
           .from('event_registrations')
-          .select('*', { count: 'exact', head: true })
-          .eq('event_id', ev.id);
-        counts[ev.id] = count || 0;
-      }));
+          .select('event_id')
+          .in('event_id', eventIds);
+        if (regData) {
+          regData.forEach(r => { counts[r.event_id] = (counts[r.event_id] || 0) + 1; });
+        }
+      }
       setRegistrationCounts(counts);
 
       // Fetch partner products
@@ -99,6 +102,17 @@ export default function Events() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-10 fade-in">
+      <Helmet>
+        <title>Community Eco Events – Clean-Ups &amp; Workshops | TechzGreen</title>
+        <meta name="description" content="Join TechzGreen community events: clean-up drives, recycling workshops, and sustainability meetups across India. Register for free and earn green points." />
+        <link rel="canonical" href="https://techzgreen.in/events" />
+        <meta property="og:title" content="Community Eco Events – Clean-Ups & Workshops | TechzGreen" />
+        <meta property="og:description" content="Join TechzGreen community events: clean-up drives, recycling workshops, and sustainability meetups across India." />
+        <meta property="og:url" content="https://techzgreen.in/events" />
+        <meta property="og:type" content="website" />
+        <meta property="og:image" content="https://techzgreen.in/favicon.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+      </Helmet>
       {/* Header */}
       <div className="glass-panel-dark p-10 mb-10 relative overflow-hidden">
         <div className="absolute inset-0 opacity-5 bg-[url('https://www.transparenttextures.com/patterns/leaves.png')]"></div>
@@ -133,6 +147,7 @@ export default function Events() {
                   <img
                     src={event.poster_url || 'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?auto=format&fit=crop&q=80&w=600'}
                     alt={event.title}
+                    loading="lazy"
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
@@ -202,7 +217,7 @@ export default function Events() {
                       <div className="space-y-3">
                         {partnerProducts[event.id].map(product => (
                           <div key={product.id} className="flex gap-3 items-center bg-white p-2 rounded-lg border border-gray-100 shadow-sm">
-                            {product.image_url && <img src={product.image_url} alt={product.name} className="w-12 h-12 object-cover rounded-md" />}
+                            {product.image_url && <img src={product.image_url} alt={product.name} loading="lazy" className="w-12 h-12 object-cover rounded-md" />}
                             <div className="flex-grow min-w-0">
                               <p className="text-sm font-bold text-[#1a3d1f] truncate">{product.name}</p>
                               <p className="text-xs text-[#2e7d32] font-black">₹{product.price}</p>

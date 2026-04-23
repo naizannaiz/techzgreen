@@ -1,0 +1,11 @@
+User-agent: *
+Disallow: /admin
+Disallow: /admin/login
+Disallow: /dashboard
+Disallow: /login
+Disallow: /signup
+Disallow: /cart
+Disallow: /checkout
+Disallow: /order-confirmation/
+
+Sitemap: https://techzgreen.in/sitemap.xml

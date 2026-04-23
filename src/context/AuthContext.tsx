@@ -57,19 +57,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (profile) setProfileRole(profile.role);
 
-      // First try the view, fall back to direct ledger sum
-      const { data: viewData, error: viewError } = await supabase
-        .from('user_total_points')
-        .select('total_points')
-        .eq('user_id', userId)
-        .single();
-
-      if (!viewError && viewData) {
-        setTotalPoints(viewData.total_points ?? 0);
-      } else {
-        // Fallback: calculate directly from ledger
-        await fetchPoints(userId);
-      }
+      await fetchPoints(userId);
     } catch (error) {
       console.error('Error fetching user data:', error);
     } finally {

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { supabase } from '../lib/supabase';
 import { Recycle, Calendar, Droplet, ShoppingBag, ArrowRight, Star, Leaf, Upload } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -23,6 +24,29 @@ export default function Landing() {
 
   return (
     <div className="fade-in">
+      <Helmet>
+        <title>TechzGreen – Earn Green Rewards for Responsible Waste Disposal</title>
+        <meta name="description" content="Turn plastic waste into green reward points. Join 1,200+ members earning eco-rewards on India's sustainability platform. Upload waste photos and redeem for eco-friendly products." />
+        <link rel="canonical" href="https://techzgreen.in/" />
+        <meta property="og:title" content="TechzGreen – Earn Green Rewards for Responsible Waste Disposal" />
+        <meta property="og:description" content="Turn plastic waste into green reward points. Join 1,200+ members earning eco-rewards on India's sustainability platform." />
+        <meta property="og:url" content="https://techzgreen.in/" />
+        <meta property="og:type" content="website" />
+        <meta property="og:image" content="https://techzgreen.in/favicon.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="TechzGreen – Earn Green Rewards for Responsible Waste Disposal" />
+        <meta name="twitter:description" content="Turn plastic waste into green reward points. Join 1,200+ members earning eco-rewards on India's sustainability platform." />
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          "name": "TechzGreen",
+          "url": "https://techzgreen.in",
+          "logo": "https://techzgreen.in/favicon.png",
+          "description": "TechzGreen empowers communities to dispose of plastic waste responsibly. Upload evidence, earn green reward points, and redeem them for eco-friendly products.",
+          "contactPoint": { "@type": "ContactPoint", "contactType": "customer support", "email": "techzgreen23@gmail.com" },
+          "address": { "@type": "PostalAddress", "addressCountry": "IN" }
+        })}</script>
+      </Helmet>
 
       {/* ── Hero ── */}
       <section className="relative overflow-hidden pt-6 pb-12 sm:pb-20 px-4">
@@ -65,6 +89,8 @@ export default function Landing() {
               <img
                 src="https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&q=80&w=900"
                 alt="Eco-friendly waste disposal"
+                fetchPriority="high"
+                width="900" height="600"
                 className="relative z-10 rounded-3xl shadow-2xl w-full object-cover h-[240px] sm:h-[340px] lg:h-[420px]"
               />
               {/* Floating cards — hidden on mobile to prevent overflow */}
@@ -173,6 +199,8 @@ export default function Landing() {
                   <img
                     src={event.poster_url || 'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?auto=format&fit=crop&q=80&w=600'}
                     alt={event.title}
+                    loading="lazy"
+                    width="192" height="192"
                     className="sm:w-48 object-cover h-48 sm:h-auto rounded-l-none sm:rounded-l-2xl rounded-tl-2xl rounded-tr-2xl sm:rounded-tr-none"
                   />
                   <div className="p-6 flex flex-col justify-between">
@@ -217,7 +245,7 @@ export default function Landing() {
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-6">
               {products.map(product => (
                 <div key={product.id} className="glass-card overflow-hidden cursor-default">
-                  <img src={product.image_url || 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=500&q=80'} alt={product.name} className="w-full h-52 object-cover" />
+                  <img src={product.image_url || 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=500&q=80'} alt={product.name} loading="lazy" className="w-full h-52 object-cover" />
                   <div className="p-5">
                     <h3 className="font-bold text-lg text-[#1a3d1f] mb-1">{product.name}</h3>
                     <p className="text-[#5f7a60] text-sm mb-4 line-clamp-2">{product.description}</p>

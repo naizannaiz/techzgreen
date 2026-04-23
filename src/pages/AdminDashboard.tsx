@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import React from 'react';
+import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
@@ -69,6 +70,7 @@ function OrderCard({
                     <img
                       src={item.products?.image_url || 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=80&q=60'}
                       alt={item.products?.name}
+                      loading="lazy"
                       className="w-12 h-12 object-cover rounded-lg flex-shrink-0"
                     />
                     <div className="flex-grow min-w-0">
@@ -235,19 +237,32 @@ export default function AdminDashboard() {
   const [partnerProductImagePreview, setPartnerProductImagePreview] = useState<string | null>(null);
   const partnerProductFileRef = useRef<HTMLInputElement>(null);
 
+  const fetchedTabs = useRef<Set<Tab>>(new Set());
+
+  // Mount: guard + load default tab only
   useEffect(() => {
     if (profileRole && profileRole !== 'admin') { navigate('/dashboard'); return; }
     if (profileRole === 'admin') {
       fetchSubmissions();
-      fetchProducts();
-      fetchBanners();
-      fetchEvents();
-      fetchSettings();
-      fetchOrders();
-      fetchVouchers();
-      fetchPartnerProducts();
+      fetchedTabs.current.add('submissions');
     }
   }, [profileRole, navigate]);
+
+  // Tab change: lazy-load data once per tab
+  useEffect(() => {
+    if (profileRole !== 'admin') return;
+    if (fetchedTabs.current.has(activeTab)) return;
+    fetchedTabs.current.add(activeTab);
+    switch (activeTab) {
+      case 'products': fetchProducts(); break;
+      case 'banners': fetchBanners(); break;
+      case 'events': fetchEvents(); break;
+      case 'orders': fetchOrders(); break;
+      case 'vouchers': fetchVouchers(); break;
+      case 'partner_merch': fetchPartnerProducts(); fetchEvents(); break;
+      case 'settings': fetchSettings(); break;
+    }
+  }, [activeTab, profileRole]);
 
   // ─── Submissions ───
   const fetchSubmissions = async () => {
@@ -283,7 +298,7 @@ export default function AdminDashboard() {
   const uploadImage = async (file: File, bucket: string, prefix = '') => {
     const ext = file.name.split('.').pop();
     const path = `${prefix}${Date.now()}.${ext}`;
-    const { error } = await supabase.storage.from(bucket).upload(path, file, { upsert: true });
+    const { error } = await supabase.storage.from(bucket).upload(path, file, { upsert: true, cacheControl: '31536000' });
     if (error) throw error;
     return supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
   };
@@ -401,11 +416,17 @@ export default function AdminDashboard() {
     adminNotes: string
   ) => {
     setOrderUpdating(orderId);
+    const currentOrder = orders.find((o: any) => o.id === orderId);
+    const currentStatus = currentOrder?.status ?? 'paid';
+    let newStatus = currentStatus;
+    if (shipped && currentStatus !== 'delivered') newStatus = 'shipped';
+    if (!shipped && currentStatus === 'shipped') newStatus = 'paid';
+
     await supabase.from('orders').update({
       shipped,
       expected_delivery: expectedDelivery || null,
       admin_notes: adminNotes || null,
-      status: shipped ? 'shipped' : 'paid',
+      status: newStatus,
     }).eq('id', orderId);
     await fetchOrders();
     setOrderUpdating(null);
@@ -504,6 +525,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-10 fade-in">
+      <Helmet><meta name="robots" content="noindex, nofollow" /></Helmet>
       {/* Header */}
       <div className="glass-panel-dark p-6 sm:p-8 mb-8 relative overflow-hidden">
         <div className="absolute inset-0 opacity-5 bg-[url('https://www.transparenttextures.com/patterns/leaves.png')]"></div>

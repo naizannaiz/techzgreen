@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { supabase } from '../lib/supabase';
 import type { Product } from '../types';
 import { useCart } from '../context/CartContext';
@@ -31,6 +32,17 @@ export default function Shop() {
 
   return (
     <div className="min-h-screen py-10 px-4 fade-in">
+      <Helmet>
+        <title>Eco Products Shop – Redeem Green Points | TechzGreen</title>
+        <meta name="description" content="Browse and buy sustainable eco-friendly products. Redeem your green reward points for bamboo, recycled-plastic, and upcycled goods on TechzGreen." />
+        <link rel="canonical" href="https://techzgreen.in/shop" />
+        <meta property="og:title" content="Eco Products Shop – Redeem Green Points | TechzGreen" />
+        <meta property="og:description" content="Browse and buy sustainable eco-friendly products. Redeem your green reward points for eco-friendly goods." />
+        <meta property="og:url" content="https://techzgreen.in/shop" />
+        <meta property="og:type" content="website" />
+        <meta property="og:image" content="https://techzgreen.in/favicon.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+      </Helmet>
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-10">
@@ -66,6 +78,7 @@ export default function Shop() {
                   <img
                     src={product.image_url || 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=500&q=80'}
                     alt={product.name}
+                    loading="lazy"
                     className="w-full h-40 sm:h-56 object-cover group-hover:scale-105 transition-transform duration-500"
                   />
                   {product.stock !== undefined && product.stock <= 0 && (

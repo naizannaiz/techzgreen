@@ -63,7 +63,7 @@ export default function EventRegistrationModal({ event, onClose, onSuccess }: Pr
         {/* Header with poster */}
         {event.poster_url && (
           <div className="relative h-40 overflow-hidden">
-            <img src={event.poster_url} alt={event.title} className="w-full h-full object-cover" />
+            <img src={event.poster_url} alt={event.title} loading="lazy" className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/50"></div>
           </div>
         )}

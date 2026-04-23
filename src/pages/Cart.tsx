@@ -1,3 +1,4 @@
+import { Helmet } from 'react-helmet-async';
 import { useCart } from '../context/CartContext';
 import { Link } from 'react-router-dom';
 import { Trash2, ShoppingBag, ArrowRight, Minus, Plus } from 'lucide-react';
@@ -24,6 +25,7 @@ export default function Cart() {
 
   return (
     <div className="page-container py-10 fade-in pb-24 sm:pb-10">
+      <Helmet><meta name="robots" content="noindex, nofollow" /></Helmet>
       {/* Header */}
       <div className="mb-8">
         <span className="section-label mb-3 inline-flex"><ShoppingBag className="w-3.5 h-3.5" />Cart</span>

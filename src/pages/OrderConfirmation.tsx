@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { CheckCircle2, ChevronRight, Package, Home, Receipt, MapPin, Star, CreditCard } from 'lucide-react';
@@ -15,8 +16,8 @@ export default function OrderConfirmation() {
         .select('*, user_addresses(*)')
         .eq('id', id)
         .single()
-        .then(({ data }) => {
-          setOrder(data);
+        .then(({ data, error }) => {
+          if (!error) setOrder(data);
           setLoading(false);
         });
     }
@@ -43,6 +44,7 @@ export default function OrderConfirmation() {
 
   return (
     <div className="min-h-screen flex items-center justify-center py-10 px-4 fade-in relative overflow-hidden">
+      <Helmet><meta name="robots" content="noindex, nofollow" /></Helmet>
       {/* Background decorations */}
       <div className="absolute top-0 right-0 w-96 h-96 bg-green-100 rounded-full blur-3xl opacity-50 -translate-y-1/2 translate-x-1/2"></div>
       <div className="absolute bottom-0 left-0 w-96 h-96 bg-amber-50 rounded-full blur-3xl opacity-50 translate-y-1/2 -translate-x-1/2"></div>

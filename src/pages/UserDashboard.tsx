@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
@@ -45,7 +46,7 @@ function OrderTrackCard({ order }: { order: any }) {
           </div>
           <p className="text-xs text-[#5f7a60] mt-0.5">
             {new Date(order.created_at).toLocaleDateString('en-IN', { dateStyle: 'medium' })}
-            {order.expected_delivery && !isDelivered && (
+            {order.expected_delivery && isShipped && !isDelivered && (
               <span className="ml-2 text-[#2e7d32] font-semibold">
                 · Est. {new Date(order.expected_delivery).toLocaleDateString('en-IN', { dateStyle: 'medium' })}
               </span>
@@ -147,6 +148,7 @@ export default function UserDashboard() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-10 fade-in pb-24 sm:pb-10">
+      <Helmet><meta name="robots" content="noindex, nofollow" /></Helmet>
       {/* Hero Header */}
       <div className="glass-panel-dark p-6 sm:p-8 mb-8 relative overflow-hidden">
         <div className="absolute inset-0 opacity-5 bg-[url('https://www.transparenttextures.com/patterns/leaves.png')]" />

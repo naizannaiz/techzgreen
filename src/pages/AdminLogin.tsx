@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { ShieldCheck, Mail, Lock, AlertTriangle } from 'lucide-react';
@@ -44,6 +45,7 @@ export default function AdminLogin() {
 
   return (
     <div className="min-h-[88vh] flex items-center justify-center px-4 py-12">
+      <Helmet><meta name="robots" content="noindex, nofollow" /></Helmet>
       <div className="w-full max-w-md">
 
         {/* Brand Mark */}

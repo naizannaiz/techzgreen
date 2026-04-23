@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
@@ -210,13 +211,10 @@ export default function Checkout() {
         throw itemsError;
       }
 
-      // Decrement stock
+      // Decrement stock atomically via RPC to avoid race conditions
       await Promise.all(items.map(async item => {
         const table = (item.product as any).isPartnerProduct ? 'partner_products' : 'products';
-        const { data: prod } = await supabase.from(table).select('stock').eq('id', item.product.id).single();
-        if (prod && prod.stock > 0) {
-          await supabase.from(table).update({ stock: Math.max(0, prod.stock - item.quantity) }).eq('id', item.product.id);
-        }
+        await supabase.rpc('decrement_stock', { row_id: item.product.id, qty: item.quantity, tbl: table });
       }));
 
       // Deduct points
@@ -244,6 +242,7 @@ export default function Checkout() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-10 fade-in">
+      <Helmet><meta name="robots" content="noindex, nofollow" /></Helmet>
       {/* Progress Bar */}
       <div className="flex items-center gap-3 mb-10">
         <div className={`flex items-center justify-center w-10 h-10 rounded-full font-bold text-sm transition-all ${step >= 1 ? 'bg-[#2e7d32] text-white shadow' : 'bg-[rgba(46,125,50,0.1)] text-[#5f7a60]'}`}>1</div>
@@ -307,13 +306,13 @@ export default function Checkout() {
               {items.map(item => (
                 <div key={item.product.id} className="flex justify-between text-sm text-[#5f7a60]">
                   <span>{item.product.name} × {item.quantity}</span>
-                  <span className="font-semibold">${(Number(item.product.price) * item.quantity).toFixed(2)}</span>
+                  <span className="font-semibold">₹{(Number(item.product.price) * item.quantity).toFixed(2)}</span>
                 </div>
               ))}
             </div>
             <div className="border-t border-[rgba(46,125,50,0.1)] pt-3 flex justify-between">
               <span className="text-[#5f7a60] font-semibold">Subtotal</span>
-              <span className="font-black text-[#1a3d1f]">${totalAmount.toFixed(2)}</span>
+              <span className="font-black text-[#1a3d1f]">₹{totalAmount.toFixed(2)}</span>
             </div>
           </div>
 
@@ -375,7 +374,7 @@ export default function Checkout() {
             )}
             <div className="flex justify-between items-center">
               <span className="text-[#5f7a60] font-semibold">Total to Pay</span>
-              <span className="text-3xl font-black text-[#1a3d1f]" style={{fontFamily:'Outfit,sans-serif'}}>${finalAmount.toFixed(2)}</span>
+              <span className="text-3xl font-black text-[#1a3d1f]" style={{fontFamily:'Outfit,sans-serif'}}>₹{finalAmount.toFixed(2)}</span>
             </div>
           </div>
 
@@ -397,7 +396,7 @@ export default function Checkout() {
             </button>
             <button onClick={handlePaymentSubmit} disabled={loading}
               className="flex-[2] btn-primary !py-3 flex items-center justify-center gap-2 disabled:opacity-50 text-sm">
-              {loading ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Processing...</> : `Confirm Payment · $${finalAmount.toFixed(2)}`}
+              {loading ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Processing...</> : `Confirm Payment · ₹${finalAmount.toFixed(2)}`}
             </button>
           </div>
         </div>

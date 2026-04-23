@@ -1,9 +1,21 @@
+import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 import { Recycle, Star, Leaf, Users, ArrowRight, CheckCircle, Globe, Award, Heart, Package, Building2 } from 'lucide-react';
 
 export default function About() {
   return (
     <div className="fade-in pb-20">
+      <Helmet>
+        <title>About TechzGreen – 32+ Years Pioneering Plastic Recycling</title>
+        <meta name="description" content="TechzGreen transforms MLP plastic waste into durable products. Learn about our mission, vision, Z Pallet, Z Board products, and community of 1,200+ eco-warriors." />
+        <link rel="canonical" href="https://techzgreen.in/about" />
+        <meta property="og:title" content="About TechzGreen – 32+ Years Pioneering Plastic Recycling" />
+        <meta property="og:description" content="TechzGreen transforms MLP plastic waste into durable products. Learn about our mission, vision, and community of 1,200+ eco-warriors." />
+        <meta property="og:url" content="https://techzgreen.in/about" />
+        <meta property="og:type" content="website" />
+        <meta property="og:image" content="https://techzgreen.in/favicon.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+      </Helmet>
 
       {/* ── Hero ── */}
       <section className="relative overflow-hidden pt-8 pb-20 px-4">
@@ -40,16 +52,19 @@ export default function About() {
               <img
                 src="https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&q=80&w=600"
                 alt="Eco products"
+                loading="lazy"
                 className="rounded-2xl object-cover h-52 w-full mt-6"
               />
               <img
                 src="https://images.unsplash.com/photo-1604187351574-c75ca79f5807?auto=format&fit=crop&q=80&w=600"
                 alt="Waste sorting"
+                loading="lazy"
                 className="rounded-2xl object-cover h-52 w-full -mt-6"
               />
               <img
                 src="https://images.unsplash.com/photo-1611284446314-60a58ac0deb9?auto=format&fit=crop&q=80&w=600"
                 alt="Green future"
+                loading="lazy"
                 className="rounded-2xl object-cover h-52 w-full"
               />
               {/* Stat badge — top left */}

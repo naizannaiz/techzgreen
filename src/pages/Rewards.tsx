@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { UploadCloud, CheckCircle2, Leaf, Clock, XCircle, Star, Gift, Tag } from 'lucide-react';
@@ -62,7 +63,7 @@ export default function Rewards() {
       const fileExt = file.name.split('.').pop();
       const filePath = `${user.id}_${Math.random()}.${fileExt}`;
 
-      const { error: uploadError } = await supabase.storage.from('waste-images').upload(filePath, file);
+      const { error: uploadError } = await supabase.storage.from('waste-images').upload(filePath, file, { cacheControl: '31536000' });
       if (uploadError) throw uploadError;
 
       const { data: { publicUrl } } = supabase.storage.from('waste-images').getPublicUrl(filePath);
@@ -120,6 +121,17 @@ export default function Rewards() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-10 fade-in">
+      <Helmet>
+        <title>Earn Green Points by Uploading Waste Photos | TechzGreen</title>
+        <meta name="description" content="Submit plastic waste photos and earn green reward points. Redeem points for eco-friendly products or partner vouchers on TechzGreen." />
+        <link rel="canonical" href="https://techzgreen.in/rewards" />
+        <meta property="og:title" content="Earn Green Points by Uploading Waste Photos | TechzGreen" />
+        <meta property="og:description" content="Submit plastic waste photos and earn green reward points. Redeem points for eco-friendly products or partner vouchers." />
+        <meta property="og:url" content="https://techzgreen.in/rewards" />
+        <meta property="og:type" content="website" />
+        <meta property="og:image" content="https://techzgreen.in/favicon.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+      </Helmet>
       {/* Hero Banner */}
       <div className="glass-panel-dark p-10 mb-8 relative overflow-hidden">
         <div className="absolute inset-0 opacity-5 bg-[url('https://www.transparenttextures.com/patterns/leaves.png')]"></div>
@@ -211,7 +223,7 @@ export default function Rewards() {
               )}
               {submissions.map((sub: any) => (
                 <div key={sub.id} className="glass-card p-4 flex gap-4 items-center">
-                  <img src={sub.image_url} alt="Waste" className="w-20 h-20 object-cover rounded-xl flex-shrink-0" />
+                  <img src={sub.image_url} alt="Waste" loading="lazy" className="w-20 h-20 object-cover rounded-xl flex-shrink-0" />
                   <div className="flex-grow min-w-0">
                     <p className="text-xs text-[#5f7a60] mb-1">{new Date(sub.created_at).toLocaleDateString()}</p>
                     <div className="flex items-center gap-2 flex-wrap">

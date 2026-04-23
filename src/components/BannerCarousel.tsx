@@ -41,6 +41,7 @@ export default function BannerCarousel() {
         <img
           src={banner.image_url}
           alt={banner.title}
+          fetchPriority="high"
           className="w-full h-full object-cover"
         />
         {/* Overlay */}
