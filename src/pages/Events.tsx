@@ -205,7 +205,7 @@ export default function Events() {
                             {product.image_url && <img src={product.image_url} alt={product.name} className="w-12 h-12 object-cover rounded-md" />}
                             <div className="flex-grow min-w-0">
                               <p className="text-sm font-bold text-[#1a3d1f] truncate">{product.name}</p>
-                              <p className="text-xs text-[#2e7d32] font-black">${product.price}</p>
+                              <p className="text-xs text-[#2e7d32] font-black">₹{product.price}</p>
                             </div>
                             <button 
                               onClick={() => {

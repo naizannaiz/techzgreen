@@ -66,7 +66,7 @@ export default function OrderConfirmation() {
             </div>
             <div className="flex-1 bg-gray-50 border border-gray-100 rounded-2xl p-5">
               <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">Total Amount</p>
-              <p className="font-black text-[#2e7d32] text-xl" style={{fontFamily: 'Outfit, sans-serif'}}>${Number(order.total_amount).toFixed(2)}</p>
+              <p className="font-black text-[#2e7d32] text-xl" style={{fontFamily: 'Outfit, sans-serif'}}>₹{Number(order.total_amount).toFixed(2)}</p>
             </div>
           </div>
 
@@ -85,7 +85,7 @@ export default function OrderConfirmation() {
                   <div className="flex justify-between">
                     <span className="text-gray-500">Points Applied</span>
                     <span className="font-bold text-[#ffb300] flex items-center gap-1">
-                      <Star className="w-3.5 h-3.5 fill-[#ffb300]" /> {order.points_used} pts (−${Number(order.points_discount_amount).toFixed(2)})
+                      <Star className="w-3.5 h-3.5 fill-[#ffb300]" /> {order.points_used} pts (−₹{Number(order.points_discount_amount).toFixed(2)})
                     </span>
                   </div>
                 )}

@@ -11,7 +11,9 @@ import AdminDashboard from './pages/AdminDashboard';
 import AdminLogin from './pages/AdminLogin';
 import Rewards from './pages/Rewards';
 import Events from './pages/Events';
+import About from './pages/About';
 import Navbar from './components/Navbar';
+import Footer from './components/Footer';
 import StitchLanding from './stitch-components/StitchLanding';
 
 function App() {
@@ -22,6 +24,7 @@ function App() {
         <main className="flex-grow">
           <Routes>
             <Route path="/" element={<Landing />} />
+            <Route path="/about" element={<About />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/shop" element={<Shop />} />
@@ -37,6 +40,7 @@ function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
+        <Footer />
       </div>
     </Router>
   );

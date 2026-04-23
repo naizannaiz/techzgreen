@@ -127,7 +127,7 @@ export default function Rewards() {
           <div>
             <div className="flex items-center gap-3 mb-3">
               <Leaf className="text-[#ffb300] w-8 h-8" />
-              <h1 className="text-3xl font-black text-white">Green Rewards</h1>
+              <h1 className="text-3xl font-black text-white">Earn Green Points</h1>
             </div>
             <p className="text-[rgba(200,230,201,0.85)] leading-relaxed max-w-lg">
               Earn points by submitting plastic waste, and redeem them for exciting partner vouchers or discounts on TechzGreen products!

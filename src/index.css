@@ -47,7 +47,8 @@
       radial-gradient(circle at 80% 90%, rgba(255, 179, 0, 0.08) 0%, transparent 50%),
       radial-gradient(circle at 60% 40%, rgba(46, 125, 50, 0.06) 0%, transparent 40%);
     background-attachment: fixed;
-    min-height: 100vh;
+    min-height: 100dvh;
+    overflow-x: hidden;
     font-family: 'Nunito', 'Inter', system-ui, sans-serif;
     color: #2d4a30;
     -webkit-font-smoothing: antialiased;
@@ -169,15 +170,15 @@
     align-items: center;
     gap: 0.5rem;
     background: rgba(46, 125, 50, 0.1);
-    color: #2e7d32;
+    color: #000000;
     font-family: 'Outfit', sans-serif;
-    font-weight: 700;
-    font-size: 0.75rem;
-    letter-spacing: 0.08em;
+    font-weight: 900;
+    font-size: 0.9rem;
+    letter-spacing: 0.05em;
     text-transform: uppercase;
-    padding: 0.3rem 0.85rem;
+    padding: 0.5rem 1.2rem;
     border-radius: 999px;
-    border: 1px solid rgba(46, 125, 50, 0.2);
+    border: 1px solid rgba(0, 0, 0, 0.2);
   }
 
   .points-badge {

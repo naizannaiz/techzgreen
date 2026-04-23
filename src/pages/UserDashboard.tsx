@@ -7,7 +7,7 @@ import {
   Clock, Mail, ChevronDown, ChevronUp, ExternalLink
 } from 'lucide-react';
 
-const ADMIN_EMAIL = 'admin@teczgreen.com'; // ← update to real support email
+const ADMIN_EMAIL = 'techzgreen23@gmail.com';
 
 // ── Order Tracking Card ──
 function OrderTrackCard({ order }: { order: any }) {
@@ -69,7 +69,7 @@ function OrderTrackCard({ order }: { order: any }) {
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-colors ${s.done ? 'bg-[#2e7d32] text-white' : 'bg-[rgba(46,125,50,0.1)] text-[#5f7a60]'}`}>
                     {s.icon}
                   </div>
-                  <span className={`ml-1 text-xs font-bold whitespace-nowrap ${s.done ? 'text-[#2e7d32]' : 'text-[#5f7a60]'}`}>{s.label}</span>
+                  <span className={`ml-1 text-[10px] sm:text-xs font-bold whitespace-nowrap ${s.done ? 'text-[#2e7d32]' : 'text-[#5f7a60]'}`}>{s.label}</span>
                   {i < steps.length - 1 && (
                     <div className={`flex-1 h-0.5 mx-2 rounded-full min-w-[12px] ${step > i ? 'bg-[#2e7d32]' : 'bg-[rgba(46,125,50,0.12)]'}`} />
                   )}
@@ -159,7 +159,7 @@ export default function UserDashboard() {
             <h1 className="text-3xl font-black text-white">{user.email?.split('@')[0]}</h1>
             <p className="text-[rgba(200,230,201,0.7)] mt-1 text-sm">Keep up the great work saving our planet!</p>
           </div>
-          <div className="stat-box-dark px-8 py-5 text-center">
+          <div className="stat-box-dark px-4 sm:px-8 py-4 sm:py-5 text-center">
             <Star className="w-6 h-6 text-[#ffb300] mx-auto mb-1 fill-[#ffb300]" />
             <p className="stat-num text-4xl">{totalPoints}</p>
             <p className="stat-label tracking-wide">Green Points</p>
@@ -172,7 +172,7 @@ export default function UserDashboard() {
         <div className="glass-panel p-6 sm:p-8">
           <h2 className="text-xl font-bold text-[#1a3d1f] mb-6">Quick Actions</h2>
           <div className="grid grid-cols-2 gap-4">
-            <Link to="/rewards" className="group glass-card p-5 flex flex-col items-center gap-3 text-center cursor-pointer !rounded-xl">
+            <Link to="/rewards" className="group glass-card p-3 sm:p-5 flex flex-col items-center gap-3 text-center cursor-pointer !rounded-xl">
               <div className="bg-[rgba(46,125,50,0.1)] p-3 rounded-xl border border-[rgba(46,125,50,0.15)] group-hover:bg-[rgba(46,125,50,0.18)] transition-colors">
                 <Camera className="w-7 h-7 text-[#2e7d32]" />
               </div>
@@ -181,7 +181,7 @@ export default function UserDashboard() {
                 <p className="text-xs text-[#5f7a60] mt-0.5">Upload waste pic</p>
               </div>
             </Link>
-            <Link to="/shop" className="group glass-card p-5 flex flex-col items-center gap-3 text-center cursor-pointer !rounded-xl">
+            <Link to="/shop" className="group glass-card p-3 sm:p-5 flex flex-col items-center gap-3 text-center cursor-pointer !rounded-xl">
               <div className="bg-amber-50 p-3 rounded-xl border border-amber-200 group-hover:bg-amber-100 transition-colors">
                 <ShoppingBag className="w-7 h-7 text-amber-600" />
               </div>
