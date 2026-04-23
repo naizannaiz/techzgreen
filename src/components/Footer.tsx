@@ -71,18 +71,18 @@ export default function Footer() {
             <ul className="space-y-4">
               <li className="flex items-start gap-3 text-sm text-[rgba(200,230,201,0.75)]">
                 <MapPin className="w-4 h-4 mt-0.5 text-[#4caf50] shrink-0" />
-                <span>TechzGreen Pvt. Ltd.<br />Kerala, India</span>
+                <span>JJ Complex, Koonammoochi (P.O)<br />Thrissur, Kerala, India — 680504</span>
               </li>
               <li className="flex items-center gap-3 text-sm">
                 <Mail className="w-4 h-4 text-[#4caf50] shrink-0" />
-                <a href="mailto:admin@teczgreen.com" className="text-[rgba(200,230,201,0.75)] hover:text-white transition-colors">
-                  admin@teczgreen.com
+                <a href="mailto:techzgreen23@gmail.com" className="text-[rgba(200,230,201,0.75)] hover:text-white transition-colors">
+                  techzgreen23@gmail.com
                 </a>
               </li>
               <li className="flex items-center gap-3 text-sm">
                 <Phone className="w-4 h-4 text-[#4caf50] shrink-0" />
-                <a href="tel:+910000000000" className="text-[rgba(200,230,201,0.75)] hover:text-white transition-colors">
-                  +91 00000 00000
+                <a href="tel:+918714985123" className="text-[rgba(200,230,201,0.75)] hover:text-white transition-colors">
+                  +91 87149 85123
                 </a>
               </li>
             </ul>

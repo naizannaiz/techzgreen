@@ -35,12 +35,12 @@ export default function Shop() {
         {/* Header */}
         <div className="mb-10">
           <span className="section-label mb-4 inline-flex"><ShoppingBag className="w-3.5 h-3.5" />Eco Shop</span>
-          <h1 className="text-5xl font-black text-[#1a3d1f] mt-3">Our Eco Products</h1>
+          <h1 className="text-3xl sm:text-5xl font-black text-[#1a3d1f] mt-3">Our Eco Products</h1>
           <p className="text-[#5f7a60] mt-2 max-w-lg">Handpicked sustainable products you can buy or redeem using your earned green points.</p>
         </div>
 
         {/* Search */}
-        <div className="relative max-w-md mb-10">
+        <div className="relative w-full sm:max-w-md mb-10">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f7a60]" />
           <input
             type="text"
@@ -59,14 +59,14 @@ export default function Shop() {
             </p>
           </div>
         ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
             {filtered.map(product => (
               <div key={product.id} className="glass-card overflow-hidden flex flex-col group cursor-default">
                 <div className="overflow-hidden relative">
                   <img
                     src={product.image_url || 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=500&q=80'}
                     alt={product.name}
-                    className="w-full h-56 object-cover group-hover:scale-105 transition-transform duration-500"
+                    className="w-full h-40 sm:h-56 object-cover group-hover:scale-105 transition-transform duration-500"
                   />
                   {product.stock !== undefined && product.stock <= 0 && (
                     <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
@@ -74,7 +74,7 @@ export default function Shop() {
                     </div>
                   )}
                 </div>
-                <div className="p-6 flex flex-col flex-grow">
+                <div className="p-3 sm:p-6 flex flex-col flex-grow">
                   <h3 className="font-bold text-xl text-[#1a3d1f] mb-1">{product.name}</h3>
                   <p className="text-[#5f7a60] text-sm mb-5 line-clamp-2 flex-grow">{product.description}</p>
                   <div className="flex justify-between items-center pt-4 border-t border-[rgba(46,125,50,0.1)]">
