@@ -210,6 +210,68 @@ export default function About() {
         </div>
       </section>
 
+      {/* ── Founders ── */}
+      <section className="py-20 px-4">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-14">
+            <span className="section-label mb-4 inline-flex"><Users className="w-3.5 h-3.5" />The Team</span>
+            <h2 className="text-4xl font-black text-[#1a3d1f] mt-4">Meet the Founders</h2>
+            <p className="text-[#5f7a60] mt-3 max-w-xl mx-auto">The people behind TechzGreen's mission to turn plastic waste into a resource.</p>
+          </div>
+          <div className="grid sm:grid-cols-3 gap-8">
+            {[
+              {
+                name: 'Founder Name',
+                role: 'CEO & Co-Founder',
+                bio: 'Visionary behind TechzGreen\'s circular economy model. 10+ years in sustainable manufacturing and MLP recycling technology.',
+                avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=300&h=300',
+              },
+              {
+                name: 'Founder Name',
+                role: 'CTO & Co-Founder',
+                bio: 'Leads product innovation and recycling process engineering. Passionate about converting waste streams into high-value materials.',
+                avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&q=80&w=300&h=300',
+              },
+              {
+                name: 'Founder Name',
+                role: 'COO & Co-Founder',
+                bio: 'Drives community engagement and operational scale. Built TechzGreen\'s network of 1,200+ eco-warriors from the ground up.',
+                avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=300&h=300',
+              },
+            ].map(({ name, role, bio, avatar }) => (
+              <div key={role} className="glass-card p-8 flex flex-col items-center text-center group">
+                {/* Avatar */}
+                <div className="relative mb-5">
+                  <img
+                    src={avatar}
+                    alt={name}
+                    className="w-24 h-24 rounded-2xl object-cover border-2 border-[rgba(46,125,50,0.2)] group-hover:border-[#2e7d32] transition-colors"
+                  />
+                  <div className="absolute -bottom-2 -right-2 bg-[#2e7d32] w-7 h-7 rounded-lg flex items-center justify-center border-2 border-white shadow">
+                    <Leaf className="w-3.5 h-3.5 text-white" />
+                  </div>
+                </div>
+                {/* Info */}
+                <h3 className="text-lg font-black text-[#1a3d1f]">{name}</h3>
+                <span className="text-xs font-bold text-[#2e7d32] bg-[rgba(46,125,50,0.1)] px-3 py-1 rounded-full border border-[rgba(46,125,50,0.2)] mt-2 mb-3">
+                  {role}
+                </span>
+                <p className="text-[#5f7a60] text-sm leading-relaxed flex-grow">{bio}</p>
+                {/* Social links */}
+                <div className="flex gap-3 mt-5">
+                  <a href="#" aria-label="LinkedIn" className="w-8 h-8 rounded-lg bg-[rgba(46,125,50,0.08)] hover:bg-[#2e7d32] text-[#5f7a60] hover:text-white transition-all flex items-center justify-center">
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+                  </a>
+                  <a href="#" aria-label="Twitter / X" className="w-8 h-8 rounded-lg bg-[rgba(46,125,50,0.08)] hover:bg-[#2e7d32] text-[#5f7a60] hover:text-white transition-all flex items-center justify-center">
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.742l7.536-8.626L2.25 2.25h6.832l4.26 5.636zm-1.16 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                  </a>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ── Featured Products Teaser ── */}
       <section className="py-20 px-4">
         <div className="max-w-7xl mx-auto">
