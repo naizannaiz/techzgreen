@@ -76,7 +76,8 @@ export default function Login() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
-                  className="input-glass pl-10"
+                  className="input-glass"
+                  style={{ paddingLeft: '2.5rem' }}
                 />
               </div>
             </div>
@@ -90,7 +91,8 @@ export default function Login() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="input-glass pl-10"
+                  className="input-glass"
+                  style={{ paddingLeft: '2.5rem' }}
                 />
               </div>
             </div>

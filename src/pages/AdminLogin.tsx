@@ -87,7 +87,7 @@ export default function AdminLogin() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="admin@techzgreen.com"
-                  className="input-glass pl-10"
+                  className="input-glass" style={{ paddingLeft: '2.5rem' }}
                   autoComplete="username"
                 />
               </div>
@@ -103,7 +103,7 @@ export default function AdminLogin() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="input-glass pl-10"
+                  className="input-glass" style={{ paddingLeft: '2.5rem' }}
                   autoComplete="current-password"
                 />
               </div>

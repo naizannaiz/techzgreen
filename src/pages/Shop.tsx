@@ -59,7 +59,7 @@ export default function Shop() {
             placeholder="Search products..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="input-glass pl-10 py-3"
+            className="input-glass py-3" style={{ paddingLeft: '2.5rem' }}
           />
         </div>
 

@@ -73,7 +73,8 @@ export default function Signup() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
-                  className="input-glass pl-10"
+                  className="input-glass"
+                  style={{ paddingLeft: '2.5rem' }}
                 />
               </div>
             </div>
@@ -88,7 +89,8 @@ export default function Signup() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Min. 6 characters"
-                  className="input-glass pl-10"
+                  className="input-glass"
+                  style={{ paddingLeft: '2.5rem' }}
                 />
               </div>
             </div>

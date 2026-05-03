@@ -626,7 +626,7 @@ export default function AdminDashboard() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-sm font-bold text-[#2d4a30] mb-1.5">Price ($) *</label>
-                    <div className="relative"><Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f7a60]" /><input required type="number" min="0" step="0.01" value={productForm.price} onChange={e => setProductForm(f => ({ ...f, price: e.target.value }))} placeholder="9.99" className="input-glass pl-10" /></div>
+                    <div className="relative"><Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f7a60]" /><input required type="number" min="0" step="0.01" value={productForm.price} onChange={e => setProductForm(f => ({ ...f, price: e.target.value }))} placeholder="9.99" className="input-glass" style={{ paddingLeft: '2.5rem' }} /></div>
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-[#2d4a30] mb-1.5">Stock</label>
@@ -752,7 +752,7 @@ export default function AdminDashboard() {
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-[#2d4a30] mb-1.5">Location</label>
-                  <div className="relative"><MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f7a60]" /><input value={eventForm.location} onChange={e => setEventForm(f => ({ ...f, location: e.target.value }))} placeholder="Chennai, Tamil Nadu" className="input-glass pl-10" /></div>
+                  <div className="relative"><MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f7a60]" /><input value={eventForm.location} onChange={e => setEventForm(f => ({ ...f, location: e.target.value }))} placeholder="Chennai, Tamil Nadu" className="input-glass" style={{ paddingLeft: '2.5rem' }} /></div>
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-[#2d4a30] mb-1.5">Max Registrations (0 = unlimited)</label>
