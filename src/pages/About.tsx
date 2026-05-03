@@ -1,6 +1,6 @@
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
-import { Recycle, Star, Leaf, Users, ArrowRight, CheckCircle, Globe, Award, Heart, Package, Building2 } from 'lucide-react';
+import { Recycle, Star, Leaf, Users, ArrowRight, CheckCircle, Globe, Award, Heart, Package } from 'lucide-react';
 
 export default function About() {
   return (
@@ -210,72 +210,21 @@ export default function About() {
         </div>
       </section>
 
-      {/* ── Our Products ── */}
+      {/* ── Featured Products Teaser ── */}
       <section className="py-20 px-4">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-14">
-            <span className="section-label mb-4 inline-flex"><Package className="w-3.5 h-3.5" />Flagship Products</span>
-            <h2 className="text-4xl font-black text-[#1a3d1f] mt-4">Built from Waste. Built to Last.</h2>
-            <p className="text-[#5f7a60] mt-3 max-w-xl mx-auto">Our signature products prove that recycled plastic can match — and exceed — conventional materials.</p>
-          </div>
-          <div className="grid md:grid-cols-2 gap-8">
-
-            {/* Z Pallet / Z Board */}
-            <div className="glass-panel p-10 space-y-5">
-              <div className="flex items-start justify-between gap-4">
-                <div className="bg-[rgba(46,125,50,0.1)] w-16 h-16 rounded-2xl flex items-center justify-center border border-[rgba(46,125,50,0.15)] shrink-0">
-                  <Building2 className="w-8 h-8 text-[#2e7d32]" />
-                </div>
-                <span className="text-xs font-black uppercase tracking-widest text-[#2e7d32] bg-[rgba(46,125,50,0.1)] px-3 py-1.5 rounded-full border border-[rgba(46,125,50,0.2)] h-fit">
-                  Industrial Grade
-                </span>
-              </div>
-              <h3 className="text-2xl font-black text-[#1a3d1f]">Z Pallet / Z Board</h3>
-              <p className="text-[#5f7a60] leading-relaxed">
-                TechzGreen's high-performance Z Pallets are designed for exceptional strength, durability, and load-bearing capacity — ideal for the toughest industrial applications. Z Boards withstand extreme conditions, ensuring unmatched reliability and longevity in material handling.
+          <div className="glass-panel-dark p-12 text-center relative overflow-hidden">
+            <div className="absolute inset-0 opacity-5 bg-[url('https://www.transparenttextures.com/patterns/leaves.png')]" />
+            <div className="relative z-10 space-y-5">
+              <span className="section-label mb-4 inline-flex"><Package className="w-3.5 h-3.5" />Flagship Products</span>
+              <h2 className="text-4xl font-black text-white mt-4">Built from Waste. Built to Last.</h2>
+              <p className="text-[rgba(200,230,201,0.85)] max-w-xl mx-auto leading-relaxed">
+                From industrial-grade Z Panel Roofing to premium eco-friendly Z Momentos — our signature products prove recycled plastic can match and exceed conventional materials.
               </p>
-              <ul className="space-y-2">
-                {['Exceptional load-bearing capacity', 'Built for extreme industrial conditions', 'Unmatched reliability & longevity', 'Made from recycled MLP plastic'].map(f => (
-                  <li key={f} className="flex items-center gap-2 text-sm text-[#2d4a30]">
-                    <CheckCircle className="w-4 h-4 text-[#2e7d32] shrink-0" />{f}
-                  </li>
-                ))}
-              </ul>
+              <Link to="/featured-products" className="btn-accent inline-flex items-center gap-2 mt-2">
+                Explore Featured Products <ArrowRight className="w-4 h-4" />
+              </Link>
             </div>
-
-            {/* Z Momento */}
-            <div className="glass-panel-dark p-10 space-y-5 relative overflow-hidden">
-              <div className="absolute inset-0 opacity-5 bg-[url('https://www.transparenttextures.com/patterns/leaves.png')]" />
-              <div className="relative z-10 space-y-5">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="bg-[rgba(255,179,0,0.15)] w-16 h-16 rounded-2xl flex items-center justify-center border border-[rgba(255,179,0,0.3)] shrink-0">
-                    <Award className="w-8 h-8 text-[#ffb300]" />
-                  </div>
-                  <span className="text-xs font-black uppercase tracking-widest text-[#ffb300] bg-[rgba(255,179,0,0.15)] px-3 py-1.5 rounded-full border border-[rgba(255,179,0,0.3)] h-fit">
-                    Premium Eco Trophy
-                  </span>
-                </div>
-                <h3 className="text-2xl font-black text-white">Z Momento</h3>
-                <p className="text-[rgba(200,230,201,0.85)] leading-relaxed">
-                  A premium, eco-friendly momento and trophy handcrafted from recycled plastic and MLP waste. Thoughtfully designed to look elegant and modern while carrying a powerful message of sustainability — whether given as an award, corporate gift, or recognition trophy.
-                </p>
-                {/* USP pills */}
-                <div className="flex flex-wrap gap-2">
-                  {['Premium Finish', '100% Eco-Friendly', 'Corporate Events', 'Awards & Recognition'].map(tag => (
-                    <span key={tag} className="text-xs font-bold text-white bg-white/10 border border-white/20 px-3 py-1 rounded-full">
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-                {/* Quote */}
-                <blockquote className="border-l-2 border-[#ffb300] pl-4 mt-2">
-                  <p className="text-[#ffb300] font-bold italic leading-relaxed text-sm">
-                    "More than a trophy. It's a statement. It's sustainability made visible."
-                  </p>
-                </blockquote>
-              </div>
-            </div>
-
           </div>
         </div>
       </section>

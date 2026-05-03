@@ -348,4 +348,9 @@
   .bottom-nav-safe {
     padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
   }
+
+  /* Desktop: no fixed bottom nav, so no extra clearance needed */
+  @media (min-width: 640px) {
+    .bottom-nav-safe { padding-bottom: 2rem; }
+  }
 }

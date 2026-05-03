@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { ShoppingCart, LayoutDashboard, LogOut, LogIn, Calendar, Home, Store, Menu, X, Info, User } from 'lucide-react';
+import { ShoppingCart, LayoutDashboard, LogOut, LogIn, Calendar, Home, Store, Menu, X, Info, User, Package } from 'lucide-react';
 import { GCoinIcon } from './GCoin';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
@@ -72,6 +72,9 @@ export default function Navbar() {
             <div className="hidden sm:flex items-center gap-1">
               <Link to="/" className={linkClass('/')}>Home</Link>
               <Link to="/about" className={linkClass('/about')}>About</Link>
+              <Link to="/featured-products" className={linkClass('/featured-products')}>
+                <span className="flex items-center gap-1.5"><Package className="w-3.5 h-3.5" />Featured</span>
+              </Link>
               <Link to="/shop" className={linkClass('/shop')}>Shop</Link>
               <Link to="/events" className={linkClass('/events')}>
                 <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" />Events</span>
@@ -145,6 +148,7 @@ export default function Navbar() {
               {[
                 { to: '/', icon: <Home className="w-4 h-4 flex-shrink-0" />, label: 'Home' },
                 { to: '/about', icon: <Info className="w-4 h-4 flex-shrink-0" />, label: 'About' },
+                { to: '/featured-products', icon: <Package className="w-4 h-4 flex-shrink-0" />, label: 'Featured Products' },
                 { to: '/shop', icon: <Store className="w-4 h-4 flex-shrink-0" />, label: 'Shop' },
                 { to: '/events', icon: <Calendar className="w-4 h-4 flex-shrink-0" />, label: 'Events' },
               ].map(({ to, icon, label }) => (

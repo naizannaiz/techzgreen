@@ -3,7 +3,7 @@ import { Helmet } from 'react-helmet-async';
 import { supabase } from '../lib/supabase';
 import type { Product } from '../types';
 import { useCart } from '../context/CartContext';
-import { ShoppingBag, Search, Check } from 'lucide-react';
+import { ShoppingBag, Search, Check, Leaf } from 'lucide-react';
 
 export default function Shop() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -50,85 +50,116 @@ export default function Shop() {
         <meta name="twitter:card" content="summary_large_image" />
       </Helmet>
 
-      {/* Sticky search header */}
-      <div className="sticky top-[72px] z-30 bg-[rgba(238,245,233,0.95)] backdrop-blur-sm px-4 pt-3 pb-3 border-b border-[rgba(46,125,50,0.08)]">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="flex items-center gap-2">
-            <ShoppingBag className="w-5 h-5 text-[#2e7d32]" />
-            <h1 className="font-black text-[#1a3d1f] text-xl" style={{ fontFamily: 'Outfit,sans-serif' }}>Eco Shop</h1>
+      {/* ── Desktop Hero Header ── */}
+      <div className="hidden sm:block px-4 pt-8 pb-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-end justify-between gap-6">
+            <div className="space-y-2">
+              <span className="section-label inline-flex"><Leaf className="w-3.5 h-3.5" />Sustainable Store</span>
+              <h1 className="text-4xl lg:text-5xl font-black text-[#1a3d1f] mt-3" style={{ fontFamily: 'Outfit, sans-serif' }}>
+                Eco Shop
+              </h1>
+              <p className="text-[#5f7a60] text-base max-w-md leading-relaxed">
+                Browse eco-friendly products made from recycled materials. Every purchase supports a greener future.
+              </p>
+            </div>
+            <div className="shrink-0 text-right">
+              <p className="text-3xl font-black text-[#2e7d32]" style={{ fontFamily: 'Outfit, sans-serif' }}>{filtered.length}</p>
+              <p className="text-sm text-[#5f7a60] font-semibold">Products</p>
+            </div>
           </div>
-          <span className="ml-auto text-xs text-[#5f7a60] font-semibold">{filtered.length} items</span>
-        </div>
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f7a60]" />
-          <input
-            type="text"
-            placeholder="Search products..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="input-glass !py-2.5"
-            style={{ paddingLeft: '2.5rem' }}
-          />
         </div>
       </div>
 
-      <div className="px-4 pt-4">
-        {filtered.length === 0 ? (
-          <div className="glass-panel p-12 text-center mt-4">
-            <ShoppingBag className="w-14 h-14 text-[rgba(46,125,50,0.2)] mx-auto mb-3" />
-            <p className="text-[#5f7a60] font-semibold">
-              {search ? 'No products match your search.' : 'No products yet. Check back soon!'}
-            </p>
+      {/* ── Sticky Search Bar ── */}
+      <div className="sticky top-[72px] z-30 bg-[rgba(238,245,233,0.95)] backdrop-blur-sm px-4 pt-3 pb-3 border-b border-[rgba(46,125,50,0.08)]">
+        <div className="max-w-7xl mx-auto">
+          {/* Mobile: title + count inline */}
+          <div className="flex items-center gap-3 mb-2 sm:hidden">
+            <ShoppingBag className="w-5 h-5 text-[#2e7d32]" />
+            <h1 className="font-black text-[#1a3d1f] text-xl" style={{ fontFamily: 'Outfit,sans-serif' }}>Eco Shop</h1>
+            <span className="ml-auto text-xs text-[#5f7a60] font-semibold">{filtered.length} items</span>
           </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3">
-            {filtered.map(product => {
-              const outOfStock = product.stock !== undefined && product.stock <= 0;
-              const added = addedIds.has(product.id);
-              return (
-                <div key={product.id} className="glass-card overflow-hidden flex flex-col tap-card">
-                  {/* Image */}
-                  <div className="relative overflow-hidden" style={{ height: '150px' }}>
-                    <img
-                      src={product.image_url || 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=300&q=80'}
-                      alt={product.name}
-                      loading="lazy"
-                      className="w-full h-full object-cover"
-                    />
-                    {outOfStock && (
-                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                        <span className="text-white font-black text-xs bg-red-600 px-2.5 py-1 rounded-full">Out of Stock</span>
+          {/* Search row */}
+          <div className="flex items-center gap-3">
+            <div className="relative flex-grow sm:max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f7a60]" />
+              <input
+                type="text"
+                placeholder="Search products..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="input-glass !py-2.5"
+                style={{ paddingLeft: '2.5rem' }}
+              />
+            </div>
+            <span className="hidden sm:block text-sm text-[#5f7a60] font-semibold shrink-0">{filtered.length} items</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Product Grid ── */}
+      <div className="px-4 pt-6 pb-4">
+        <div className="max-w-7xl mx-auto">
+          {filtered.length === 0 ? (
+            <div className="glass-panel p-16 text-center mt-4">
+              <ShoppingBag className="w-16 h-16 text-[rgba(46,125,50,0.2)] mx-auto mb-4" />
+              <p className="text-[#5f7a60] font-semibold text-lg">
+                {search ? 'No products match your search.' : 'No products yet. Check back soon!'}
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5 lg:gap-6">
+              {filtered.map(product => {
+                const outOfStock = product.stock !== undefined && product.stock <= 0;
+                const added = addedIds.has(product.id);
+                return (
+                  <div key={product.id} className="glass-card overflow-hidden flex flex-col tap-card">
+                    {/* Image */}
+                    <div className="relative overflow-hidden h-[150px] sm:h-[180px] lg:h-[210px]">
+                      <img
+                        src={product.image_url || 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=400&q=80'}
+                        alt={product.name}
+                        loading="lazy"
+                        className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+                      />
+                      {outOfStock && (
+                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                          <span className="text-white font-black text-xs bg-red-600 px-2.5 py-1 rounded-full">Out of Stock</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Info */}
+                    <div className="p-3 sm:p-4 flex flex-col flex-grow">
+                      <h3 className="font-bold text-[#1a3d1f] text-sm sm:text-base line-clamp-1">{product.name}</h3>
+                      <p className="text-[#5f7a60] text-[11px] sm:text-xs line-clamp-2 mt-0.5 sm:mt-1 flex-grow leading-relaxed">
+                        {product.description}
+                      </p>
+
+                      <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-[rgba(46,125,50,0.08)] flex items-center justify-between gap-2">
+                        <span className="font-black text-[#2e7d32] text-base sm:text-lg" style={{ fontFamily: 'Outfit,sans-serif' }}>
+                          ₹{Number(product.price).toFixed(0)}
+                        </span>
+                        <button
+                          onClick={() => !outOfStock && handleAdd(product)}
+                          disabled={outOfStock}
+                          className={`flex items-center gap-1 text-[11px] sm:text-xs font-black px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-all active:scale-95 disabled:opacity-40 cursor-pointer ${
+                            added
+                              ? 'bg-green-100 text-green-700 border border-green-300'
+                              : 'bg-[#ffb300] text-black shadow-sm hover:bg-[#ffa000]'
+                          }`}
+                        >
+                          {outOfStock ? 'Sold Out' : added ? <><Check className="w-3 h-3" /> Added</> : '+ Add'}
+                        </button>
                       </div>
-                    )}
-                  </div>
-
-                  {/* Info */}
-                  <div className="p-3 flex flex-col flex-grow">
-                    <h3 className="font-bold text-[#1a3d1f] text-sm line-clamp-1">{product.name}</h3>
-                    <p className="text-[#5f7a60] text-[11px] line-clamp-2 mt-0.5 flex-grow leading-relaxed">{product.description}</p>
-
-                    <div className="mt-2 pt-2 border-t border-[rgba(46,125,50,0.08)] flex items-center justify-between gap-1">
-                      <span className="font-black text-[#2e7d32] text-base" style={{ fontFamily: 'Outfit,sans-serif' }}>
-                        ₹{Number(product.price).toFixed(0)}
-                      </span>
-                      <button
-                        onClick={() => !outOfStock && handleAdd(product)}
-                        disabled={outOfStock}
-                        className={`flex items-center gap-1 text-[11px] font-black px-3 py-1.5 rounded-lg transition-all active:scale-95 disabled:opacity-40 ${
-                          added
-                            ? 'bg-green-100 text-green-700 border border-green-300'
-                            : 'bg-[#ffb300] text-black shadow-sm'
-                        }`}
-                      >
-                        {outOfStock ? 'Sold Out' : added ? <><Check className="w-3 h-3" /> Added</> : '+ Add'}
-                      </button>
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

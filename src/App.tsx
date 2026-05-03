@@ -18,6 +18,7 @@ const Events = lazy(() => import('./pages/Events'));
 const About = lazy(() => import('./pages/About'));
 const StitchLanding = lazy(() => import('./stitch-components/StitchLanding'));
 const UserProfile = lazy(() => import('./pages/UserProfile'));
+const FeaturedProducts = lazy(() => import('./pages/FeaturedProducts'));
 
 const ScrollToTop = () => {
   const { pathname } = useLocation();
@@ -55,6 +56,7 @@ function App() {
               <Route path="/events" element={<Events />} />
               <Route path="/stitch-landing" element={<StitchLanding />} />
               <Route path="/profile" element={<UserProfile />} />
+              <Route path="/featured-products" element={<FeaturedProducts />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Suspense>
