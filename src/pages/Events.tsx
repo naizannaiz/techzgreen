@@ -101,13 +101,12 @@ export default function Events() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-10 fade-in">
+    <div className="fade-in bottom-nav-safe">
       <Helmet>
         <title>Community Eco Events – Clean-Ups &amp; Workshops | TechzGreen</title>
         <meta name="description" content="Join TechzGreen community events: clean-up drives, recycling workshops, and sustainability meetups across India. Register for free and earn green points." />
         <link rel="canonical" href="https://techzgreen.in/events" />
         <meta property="og:title" content="Community Eco Events – Clean-Ups & Workshops | TechzGreen" />
-        <meta property="og:description" content="Join TechzGreen community events: clean-up drives, recycling workshops, and sustainability meetups across India." />
         <meta property="og:url" content="https://techzgreen.in/events" />
         <meta property="og:type" content="website" />
         <meta property="og:image" content="https://techzgreen.in/favicon.png" />
@@ -126,13 +125,13 @@ export default function Events() {
       </div>
 
       {events.length === 0 ? (
-        <div className="glass-panel p-20 text-center">
-          <Calendar className="w-16 h-16 text-[rgba(46,125,50,0.2)] mx-auto mb-4" />
-          <p className="text-[#5f7a60] font-semibold text-lg">No upcoming events</p>
-          <p className="text-xs text-[#5f7a60] mt-1 opacity-70">Check back soon — the admin will post events here.</p>
+        <div className="mx-4 glass-panel p-12 text-center">
+          <Calendar className="w-14 h-14 text-[rgba(46,125,50,0.2)] mx-auto mb-3" />
+          <p className="text-[#5f7a60] font-semibold">No upcoming events</p>
+          <p className="text-xs text-[#5f7a60] mt-1 opacity-70">Check back soon!</p>
         </div>
       ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="px-4 space-y-4 sm:grid sm:grid-cols-2 sm:gap-4 sm:space-y-0 lg:grid-cols-3">
           {events.map(event => {
             const isRegistered = registeredIds.includes(event.id);
             const isSuccess = successId === event.id;

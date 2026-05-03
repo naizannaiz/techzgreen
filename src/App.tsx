@@ -1,5 +1,5 @@
-import { lazy, Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { lazy, Suspense, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 
@@ -17,6 +17,13 @@ const Rewards = lazy(() => import('./pages/Rewards'));
 const Events = lazy(() => import('./pages/Events'));
 const About = lazy(() => import('./pages/About'));
 const StitchLanding = lazy(() => import('./stitch-components/StitchLanding'));
+const UserProfile = lazy(() => import('./pages/UserProfile'));
+
+const ScrollToTop = () => {
+  const { pathname } = useLocation();
+  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+  return null;
+};
 
 const PageSpinner = () => (
   <div className="flex justify-center items-center py-32">
@@ -27,6 +34,7 @@ const PageSpinner = () => (
 function App() {
   return (
     <Router>
+      <ScrollToTop />
       <div className="min-h-screen flex flex-col">
         <Navbar />
         <main className="flex-grow">
@@ -46,6 +54,7 @@ function App() {
               <Route path="/rewards" element={<Rewards />} />
               <Route path="/events" element={<Events />} />
               <Route path="/stitch-landing" element={<StitchLanding />} />
+              <Route path="/profile" element={<UserProfile />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Suspense>

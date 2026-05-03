@@ -5,38 +5,34 @@ import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import {
   Camera, ShoppingBag, Package, Star, ArrowRight, Leaf, Truck, CheckCheck,
-  Clock, Mail, ChevronDown, ChevronUp, ExternalLink
+  Clock, Mail, ChevronDown, ChevronUp, ExternalLink, Gift
 } from 'lucide-react';
+import { GCoinIcon } from '../components/GCoin';
 
 const ADMIN_EMAIL = 'techzgreen23@gmail.com';
 
-// ── Order Tracking Card ──
 function OrderTrackCard({ order }: { order: any }) {
   const [expanded, setExpanded] = useState(false);
-
   const isShipped = order.shipped;
   const isDelivered = order.status === 'delivered';
   const step = isDelivered ? 2 : isShipped ? 1 : 0;
 
   const steps = [
-    { label: 'Order Placed', icon: <Package className="w-4 h-4" />, done: step >= 0 },
-    { label: 'Shipped', icon: <Truck className="w-4 h-4" />, done: step >= 1 },
-    { label: 'Delivered', icon: <CheckCheck className="w-4 h-4" />, done: step >= 2 },
+    { label: 'Placed', icon: <Package className="w-3.5 h-3.5" />, done: step >= 0 },
+    { label: 'Shipped', icon: <Truck className="w-3.5 h-3.5" />, done: step >= 1 },
+    { label: 'Delivered', icon: <CheckCheck className="w-3.5 h-3.5" />, done: step >= 2 },
   ];
 
   return (
     <div className="glass-card overflow-hidden">
-      <button
-        onClick={() => setExpanded(e => !e)}
-        className="w-full flex items-center gap-4 p-4 text-left cursor-pointer"
-      >
-        <div className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center ${isShipped ? 'bg-green-100 text-green-700' : 'bg-amber-50 text-amber-600'}`}>
-          {isShipped ? <Truck className="w-5 h-5" /> : <Clock className="w-5 h-5" />}
+      <button onClick={() => setExpanded(e => !e)} className="w-full flex items-center gap-3 p-4 text-left cursor-pointer">
+        <div className={`flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center ${isShipped ? 'bg-green-100 text-green-700' : 'bg-amber-50 text-amber-600'}`}>
+          {isShipped ? <Truck className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
         </div>
         <div className="flex-grow min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <p className="font-black text-[#1a3d1f] text-sm">#{order.id.substring(0, 8).toUpperCase()}</p>
-            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
               isDelivered ? 'bg-green-100 text-green-700' :
               isShipped ? 'bg-blue-100 text-blue-700' :
               'bg-amber-100 text-amber-700'
@@ -44,72 +40,55 @@ function OrderTrackCard({ order }: { order: any }) {
               {isDelivered ? '✓ Delivered' : isShipped ? '🚚 Shipped' : '⏳ Processing'}
             </span>
           </div>
-          <p className="text-xs text-[#5f7a60] mt-0.5">
+          <p className="text-[11px] text-[#5f7a60] mt-0.5">
             {new Date(order.created_at).toLocaleDateString('en-IN', { dateStyle: 'medium' })}
-            {order.expected_delivery && isShipped && !isDelivered && (
-              <span className="ml-2 text-[#2e7d32] font-semibold">
-                · Est. {new Date(order.expected_delivery).toLocaleDateString('en-IN', { dateStyle: 'medium' })}
-              </span>
-            )}
           </p>
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <span className="font-black text-[#2e7d32] text-sm">₹{Number(order.total_amount).toFixed(2)}</span>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <span className="font-black text-[#2e7d32] text-sm">₹{Number(order.total_amount).toFixed(0)}</span>
           {expanded ? <ChevronUp className="w-4 h-4 text-[#5f7a60]" /> : <ChevronDown className="w-4 h-4 text-[#5f7a60]" />}
         </div>
       </button>
 
       {expanded && (
-        <div className="border-t border-[rgba(46,125,50,0.1)] p-4 space-y-5 bg-[rgba(46,125,50,0.02)]">
-          {/* 3-step timeline */}
-          <div>
-            <p className="text-xs font-bold text-[#2d4a30] uppercase tracking-wide mb-3">Tracking</p>
-            <div className="flex items-center">
-              {steps.map((s, i) => (
-                <div key={i} className="flex items-center flex-1 last:flex-none">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-colors ${s.done ? 'bg-[#2e7d32] text-white' : 'bg-[rgba(46,125,50,0.1)] text-[#5f7a60]'}`}>
-                    {s.icon}
-                  </div>
-                  <span className={`ml-1 text-[10px] sm:text-xs font-bold whitespace-nowrap ${s.done ? 'text-[#2e7d32]' : 'text-[#5f7a60]'}`}>{s.label}</span>
-                  {i < steps.length - 1 && (
-                    <div className={`flex-1 h-0.5 mx-2 rounded-full min-w-[12px] ${step > i ? 'bg-[#2e7d32]' : 'bg-[rgba(46,125,50,0.12)]'}`} />
-                  )}
+        <div className="border-t border-[rgba(46,125,50,0.1)] p-4 space-y-4 bg-[rgba(46,125,50,0.02)]">
+          {/* Progress bar */}
+          <div className="flex items-center">
+            {steps.map((s, i) => (
+              <div key={i} className="flex items-center flex-1 last:flex-none">
+                <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${s.done ? 'bg-[#2e7d32] text-white' : 'bg-[rgba(46,125,50,0.1)] text-[#5f7a60]'}`}>
+                  {s.icon}
                 </div>
-              ))}
-            </div>
+                <span className={`ml-1 text-[10px] font-bold whitespace-nowrap ${s.done ? 'text-[#2e7d32]' : 'text-[#5f7a60]'}`}>{s.label}</span>
+                {i < steps.length - 1 && (
+                  <div className={`flex-1 h-0.5 mx-1 rounded-full min-w-[8px] ${step > i ? 'bg-[#2e7d32]' : 'bg-[rgba(46,125,50,0.12)]'}`} />
+                )}
+              </div>
+            ))}
           </div>
 
           {/* Items */}
           {order.order_items && order.order_items.length > 0 && (
-            <div>
-              <p className="text-xs font-bold text-[#2d4a30] uppercase tracking-wide mb-2">Items</p>
-              <div className="space-y-2">
-                {order.order_items.map((item: any) => (
-                  <div key={item.id} className="flex items-center gap-3 bg-white/50 rounded-xl p-2.5">
-                    <img
-                      src={item.products?.image_url || 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=60&q=60'}
-                      alt={item.products?.name}
-                      className="w-10 h-10 object-cover rounded-lg flex-shrink-0"
-                    />
-                    <div className="flex-grow min-w-0">
-                      <p className="font-bold text-[#1a3d1f] text-sm truncate">{item.products?.name}</p>
-                      <p className="text-xs text-[#5f7a60]">Qty: {item.quantity}</p>
-                    </div>
-                    <p className="font-black text-[#2e7d32] text-sm">₹{(item.quantity * item.price_at_time).toFixed(2)}</p>
+            <div className="space-y-2">
+              {order.order_items.map((item: any) => (
+                <div key={item.id} className="flex items-center gap-3 bg-white/50 rounded-xl p-2.5">
+                  <img src={item.products?.image_url || 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=60&q=60'}
+                    alt={item.products?.name} className="w-9 h-9 object-cover rounded-lg flex-shrink-0" />
+                  <div className="flex-grow min-w-0">
+                    <p className="font-bold text-[#1a3d1f] text-xs truncate">{item.products?.name}</p>
+                    <p className="text-[10px] text-[#5f7a60]">Qty: {item.quantity}</p>
                   </div>
-                ))}
-              </div>
+                  <p className="font-black text-[#2e7d32] text-xs">₹{(item.quantity * item.price_at_time).toFixed(0)}</p>
+                </div>
+              ))}
             </div>
           )}
 
-          {/* Support */}
           <div className="flex items-center gap-2 pt-1 border-t border-[rgba(46,125,50,0.08)]">
             <Mail className="w-3.5 h-3.5 text-[#5f7a60] flex-shrink-0" />
             <span className="text-xs text-[#5f7a60]">Need help?</span>
-            <a
-              href={`mailto:${ADMIN_EMAIL}?subject=Order #${order.id.substring(0, 8).toUpperCase()} Help`}
-              className="text-xs font-bold text-[#2e7d32] hover:underline flex items-center gap-1"
-            >
+            <a href={`mailto:${ADMIN_EMAIL}?subject=Order #${order.id.substring(0, 8).toUpperCase()} Help`}
+              className="text-xs font-bold text-[#2e7d32] hover:underline flex items-center gap-1">
               Contact support <ExternalLink className="w-3 h-3" />
             </a>
           </div>
@@ -129,8 +108,7 @@ export default function UserDashboard() {
     if (!user) { navigate('/login'); return; }
     if (profileRole === 'admin') { navigate('/admin'); return; }
 
-    supabase
-      .from('orders')
+    supabase.from('orders')
       .select('*, order_items(*, products(name, image_url))')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
@@ -146,76 +124,72 @@ export default function UserDashboard() {
     );
   }
 
+  const displayName = user.email?.split('@')[0] || 'User';
+
   return (
-    <div className="max-w-7xl mx-auto px-4 py-10 fade-in pb-24 sm:pb-10">
+    <div className="fade-in bottom-nav-safe">
       <Helmet><meta name="robots" content="noindex, nofollow" /></Helmet>
-      {/* Hero Header */}
-      <div className="glass-panel-dark p-6 sm:p-8 mb-8 relative overflow-hidden">
+
+      {/* ── Hero Banner ── */}
+      <div className="glass-panel-dark mx-4 mt-4 p-5 relative overflow-hidden rounded-2xl">
         <div className="absolute inset-0 opacity-5 bg-[url('https://www.transparenttextures.com/patterns/leaves.png')]" />
-        <div className="relative z-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <Leaf className="text-[#66bb6a] w-5 h-5" />
-              <span className="text-[rgba(200,230,201,0.8)] text-sm font-semibold">Welcome back</span>
-            </div>
-            <h1 className="text-3xl font-black text-white">{user.email?.split('@')[0]}</h1>
-            <p className="text-[rgba(200,230,201,0.7)] mt-1 text-sm">Keep up the great work saving our planet!</p>
+        <div className="relative z-10">
+          <div className="flex items-center gap-2 mb-1">
+            <Leaf className="text-[#66bb6a] w-4 h-4" />
+            <span className="text-[rgba(200,230,201,0.8)] text-xs font-semibold">Welcome back</span>
           </div>
-          <div className="stat-box-dark px-4 sm:px-8 py-4 sm:py-5 text-center">
-            <Star className="w-6 h-6 text-[#ffb300] mx-auto mb-1 fill-[#ffb300]" />
-            <p className="stat-num text-4xl">{totalPoints}</p>
-            <p className="stat-label tracking-wide">Green Points</p>
+          <h1 className="text-2xl font-black text-white capitalize" style={{ fontFamily: 'Outfit,sans-serif' }}>{displayName}</h1>
+          <p className="text-[rgba(200,230,201,0.7)] text-xs mt-0.5">Keep saving our planet! 🌿</p>
+
+          {/* G Coins badge */}
+          <div className="mt-4 inline-flex items-center gap-3 bg-black/25 border border-white/20 rounded-2xl px-5 py-3">
+            <GCoinIcon size={42} />
+            <p className="font-black text-white text-3xl leading-none" style={{ fontFamily: 'Outfit,sans-serif' }}>{totalPoints}</p>
           </div>
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Quick Actions */}
-        <div className="glass-panel p-6 sm:p-8">
-          <h2 className="text-xl font-bold text-[#1a3d1f] mb-6">Quick Actions</h2>
-          <div className="grid grid-cols-2 gap-4">
-            <Link to="/rewards" className="group glass-card p-3 sm:p-5 flex flex-col items-center gap-3 text-center cursor-pointer !rounded-xl">
-              <div className="bg-[rgba(46,125,50,0.1)] p-3 rounded-xl border border-[rgba(46,125,50,0.15)] group-hover:bg-[rgba(46,125,50,0.18)] transition-colors">
-                <Camera className="w-7 h-7 text-[#2e7d32]" />
-              </div>
+      {/* ── Quick Actions 2×2 grid ── */}
+      <div className="px-4 mt-5">
+        <h2 className="font-bold text-[#1a3d1f] text-sm uppercase tracking-wide mb-3">Quick Actions</h2>
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            { to: '/rewards', icon: <Camera className="w-7 h-7 text-[#2e7d32]" />, bg: 'bg-[rgba(46,125,50,0.1)]', border: 'border-[rgba(46,125,50,0.15)]', label: 'Earn Points', sub: 'Upload waste photo' },
+            { to: '/shop', icon: <ShoppingBag className="w-7 h-7 text-amber-600" />, bg: 'bg-amber-50', border: 'border-amber-200', label: 'Shop', sub: 'Eco products' },
+            { to: '/events', icon: <Package className="w-7 h-7 text-blue-600" />, bg: 'bg-blue-50', border: 'border-blue-200', label: 'Events', sub: 'Community eco-events' },
+            { to: '/rewards', icon: <Gift className="w-7 h-7 text-[#ffb300]" />, bg: 'bg-amber-50', border: 'border-amber-200', label: 'Vouchers', sub: 'Redeem points' },
+          ].map(({ to, icon, bg, border, label, sub }) => (
+            <Link key={label} to={to} className={`glass-card p-4 flex flex-col gap-3 tap-card`}>
+              <div className={`${bg} p-3 rounded-xl border ${border} w-fit`}>{icon}</div>
               <div>
-                <p className="font-bold text-[#1a3d1f] text-sm">Earn Points</p>
-                <p className="text-xs text-[#5f7a60] mt-0.5">Upload waste pic</p>
+                <p className="font-bold text-[#1a3d1f] text-sm">{label}</p>
+                <p className="text-[10px] text-[#5f7a60] mt-0.5">{sub}</p>
               </div>
             </Link>
-            <Link to="/shop" className="group glass-card p-3 sm:p-5 flex flex-col items-center gap-3 text-center cursor-pointer !rounded-xl">
-              <div className="bg-amber-50 p-3 rounded-xl border border-amber-200 group-hover:bg-amber-100 transition-colors">
-                <ShoppingBag className="w-7 h-7 text-amber-600" />
-              </div>
-              <div>
-                <p className="font-bold text-[#1a3d1f] text-sm">Shop</p>
-                <p className="text-xs text-[#5f7a60] mt-0.5">Eco products</p>
-              </div>
-            </Link>
-          </div>
+          ))}
         </div>
+      </div>
 
-        {/* Order History + Tracking */}
-        <div className="glass-panel p-6 sm:p-8">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-[#1a3d1f]">My Orders</h2>
-            {recentOrders.length > 0 && (
-              <Link to="/shop" className="text-xs font-bold text-[#2e7d32] flex items-center gap-1 hover:underline">
-                Shop More <ArrowRight className="w-3 h-3" />
-              </Link>
-            )}
-          </div>
-          <div className="space-y-3">
-            {recentOrders.length === 0 ? (
-              <div className="text-center py-8">
-                <Package className="w-10 h-10 text-[rgba(46,125,50,0.2)] mx-auto mb-2" />
-                <p className="text-[#5f7a60] text-sm font-medium">No orders yet.</p>
-                <Link to="/shop" className="text-xs text-[#2e7d32] font-bold hover:underline mt-1 inline-block">Browse the shop</Link>
-              </div>
-            ) : (
-              recentOrders.map(order => <OrderTrackCard key={order.id} order={order} />)
-            )}
-          </div>
+      {/* ── My Orders ── */}
+      <div className="px-4 mt-6 mb-4">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-bold text-[#1a3d1f] text-sm uppercase tracking-wide">My Orders</h2>
+          {recentOrders.length > 0 && (
+            <Link to="/shop" className="text-xs font-bold text-[#2e7d32] flex items-center gap-1">
+              Shop More <ArrowRight className="w-3 h-3" />
+            </Link>
+          )}
+        </div>
+        <div className="space-y-3">
+          {recentOrders.length === 0 ? (
+            <div className="glass-panel p-8 text-center">
+              <Package className="w-10 h-10 text-[rgba(46,125,50,0.2)] mx-auto mb-2" />
+              <p className="text-[#5f7a60] text-sm font-medium">No orders yet.</p>
+              <Link to="/shop" className="text-xs text-[#2e7d32] font-bold hover:underline mt-1 inline-block">Browse the shop</Link>
+            </div>
+          ) : (
+            recentOrders.map(order => <OrderTrackCard key={order.id} order={order} />)
+          )}
         </div>
       </div>
     </div>
