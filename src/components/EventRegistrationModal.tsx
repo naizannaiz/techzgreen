@@ -100,7 +100,7 @@ export default function EventRegistrationModal({ event, onClose, onSuccess }: Pr
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f7a60]" />
                 <input required value={form.full_name} onChange={e => setForm(f => ({...f, full_name: e.target.value}))}
-                  placeholder="Your full name" className="input-glass pl-10" />
+                  placeholder="Your full name" className="input-glass" style={{ paddingLeft: '2.5rem' }} />
               </div>
             </div>
             <div>
@@ -108,7 +108,7 @@ export default function EventRegistrationModal({ event, onClose, onSuccess }: Pr
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f7a60]" />
                 <input required type="email" value={form.email} onChange={e => setForm(f => ({...f, email: e.target.value}))}
-                  placeholder="you@example.com" className="input-glass pl-10" />
+                  placeholder="you@example.com" className="input-glass" style={{ paddingLeft: '2.5rem' }} />
               </div>
             </div>
             <div>
@@ -116,7 +116,7 @@ export default function EventRegistrationModal({ event, onClose, onSuccess }: Pr
               <div className="relative">
                 <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f7a60]" />
                 <input value={form.phone} onChange={e => setForm(f => ({...f, phone: e.target.value}))}
-                  placeholder="+91 98765 43210" className="input-glass pl-10" />
+                  placeholder="+91 98765 43210" className="input-glass" style={{ paddingLeft: '2.5rem' }} />
               </div>
             </div>
             <div className="flex gap-3 pt-2">

@@ -8,7 +8,7 @@ import {
   XCircle, Award, Leaf, CheckCircle2, Package, Plus, Trash2, UploadCloud,
   Tag, Image, Calendar, MapPin, Users, Settings, ChevronRight, X, Phone, Mail,
   Megaphone, ToggleLeft, ToggleRight, ShoppingBag, Truck, Clock, CheckCheck,
-  ChevronDown, ChevronUp, ExternalLink, Gift, Star
+  ChevronDown, ChevronUp, ExternalLink, Gift, Star, Pencil, Check
 } from 'lucide-react';
 
 // ── Order Card sub-component (needs own state hooks) ──
@@ -194,6 +194,9 @@ export default function AdminDashboard() {
   const [productImagePreview, setProductImagePreview] = useState<string | null>(null);
   const [productForm, setProductForm] = useState({ name: '', description: '', price: '', stock: '' });
   const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const [editProductDesc, setEditProductDesc] = useState('');
+  const [savingProductDesc, setSavingProductDesc] = useState(false);
   const productFileRef = useRef<HTMLInputElement>(null);
 
   // ── Banners ──
@@ -321,6 +324,14 @@ export default function AdminDashboard() {
     await supabase.from('products').delete().eq('id', id);
     fetchProducts();
     setDeletingProductId(null);
+  };
+  const handleSaveProductDesc = async (id: string) => {
+    setSavingProductDesc(true);
+    try {
+      await supabase.from('products').update({ description: editProductDesc }).eq('id', id);
+      setProducts(prev => prev.map(p => p.id === id ? { ...p, description: editProductDesc } : p));
+      setEditingProductId(null);
+    } catch (e: any) { alert(e.message); } finally { setSavingProductDesc(false); }
   };
 
   // ─── Banners ───
@@ -615,7 +626,7 @@ export default function AdminDashboard() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-sm font-bold text-[#2d4a30] mb-1.5">Price ($) *</label>
-                    <div className="relative"><Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f7a60]" /><input required type="number" min="0" step="0.01" value={productForm.price} onChange={e => setProductForm(f => ({ ...f, price: e.target.value }))} placeholder="9.99" className="input-glass pl-10" /></div>
+                    <div className="relative"><Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f7a60]" /><input required type="number" min="0" step="0.01" value={productForm.price} onChange={e => setProductForm(f => ({ ...f, price: e.target.value }))} placeholder="9.99" className="input-glass" style={{ paddingLeft: '2.5rem' }} /></div>
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-[#2d4a30] mb-1.5">Stock</label>
@@ -631,11 +642,32 @@ export default function AdminDashboard() {
             {productsLoading ? <div className="text-center py-12"><div className="w-8 h-8 border-4 border-[#2e7d32] border-t-transparent rounded-full animate-spin mx-auto"></div></div> : products.length === 0 ? <div className="glass-panel p-16 text-center"><Package className="w-12 h-12 text-[rgba(46,125,50,0.2)] mx-auto mb-3" /><p className="text-[#5f7a60]">No products yet.</p></div> : (
               <div className="space-y-4">
                 {products.map((p: any) => (
-                  <div key={p.id} className={`glass-card p-4 flex gap-4 items-center ${deletingProductId === p.id ? 'opacity-50 pointer-events-none' : ''}`}>
+                  <div key={p.id} className={`glass-card p-4 flex gap-4 items-start ${deletingProductId === p.id ? 'opacity-50 pointer-events-none' : ''}`}>
                     <img src={p.image_url || 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=200&q=80'} alt={p.name} className="w-20 h-20 object-cover rounded-xl flex-shrink-0" />
                     <div className="flex-grow min-w-0">
                       <h3 className="font-bold text-[#1a3d1f] truncate">{p.name}</h3>
-                      <p className="text-xs text-[#5f7a60] line-clamp-1">{p.description}</p>
+                      {editingProductId === p.id ? (
+                        <div className="mt-1 flex gap-2 items-start">
+                          <textarea
+                            rows={2}
+                            value={editProductDesc}
+                            onChange={e => setEditProductDesc(e.target.value)}
+                            className="input-glass text-xs resize-none flex-grow"
+                            autoFocus
+                          />
+                          <div className="flex gap-1 flex-shrink-0">
+                            <button onClick={() => handleSaveProductDesc(p.id)} disabled={savingProductDesc} className="p-1.5 text-[#2e7d32] hover:bg-[rgba(46,125,50,0.1)] rounded-lg transition-colors cursor-pointer disabled:opacity-50">
+                              {savingProductDesc ? <div className="w-4 h-4 border-2 border-[#2e7d32] border-t-transparent rounded-full animate-spin" /> : <Check className="w-4 h-4" />}
+                            </button>
+                            <button onClick={() => setEditingProductId(null)} className="p-1.5 text-gray-400 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"><X className="w-4 h-4" /></button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <p className="text-xs text-[#5f7a60] line-clamp-1 flex-grow">{p.description}</p>
+                          <button onClick={() => { setEditingProductId(p.id); setEditProductDesc(p.description || ''); }} className="flex-shrink-0 p-1 text-[#5f7a60] hover:text-[#2e7d32] hover:bg-[rgba(46,125,50,0.08)] rounded-lg transition-colors cursor-pointer" title="Edit description"><Pencil className="w-3 h-3" /></button>
+                        </div>
+                      )}
                       <div className="flex items-center gap-3 mt-1.5">
                         <span className="font-black text-[#2e7d32]" style={{ fontFamily: 'Outfit,sans-serif' }}>${Number(p.price).toFixed(2)}</span>
                         <span className="text-xs text-[#5f7a60] bg-[rgba(46,125,50,0.08)] border border-[rgba(46,125,50,0.15)] px-2 py-0.5 rounded-lg">Stock: {p.stock}</span>
@@ -720,7 +752,7 @@ export default function AdminDashboard() {
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-[#2d4a30] mb-1.5">Location</label>
-                  <div className="relative"><MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f7a60]" /><input value={eventForm.location} onChange={e => setEventForm(f => ({ ...f, location: e.target.value }))} placeholder="Chennai, Tamil Nadu" className="input-glass pl-10" /></div>
+                  <div className="relative"><MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f7a60]" /><input value={eventForm.location} onChange={e => setEventForm(f => ({ ...f, location: e.target.value }))} placeholder="Chennai, Tamil Nadu" className="input-glass" style={{ paddingLeft: '2.5rem' }} /></div>
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-[#2d4a30] mb-1.5">Max Registrations (0 = unlimited)</label>
