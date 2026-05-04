@@ -4,7 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import {
-  Camera, ShoppingBag, Package, Star, ArrowRight, Leaf, Truck, CheckCheck,
+  Camera, ShoppingBag, Package, ArrowRight, Leaf, Truck, CheckCheck,
   Clock, Mail, ChevronDown, ChevronUp, ExternalLink, Gift
 } from 'lucide-react';
 import { GCoinIcon } from '../components/GCoin';
@@ -52,7 +52,6 @@ function OrderTrackCard({ order }: { order: any }) {
 
       {expanded && (
         <div className="border-t border-[rgba(46,125,50,0.1)] p-4 space-y-4 bg-[rgba(46,125,50,0.02)]">
-          {/* Progress bar */}
           <div className="flex items-center">
             {steps.map((s, i) => (
               <div key={i} className="flex items-center flex-1 last:flex-none">
@@ -67,7 +66,6 @@ function OrderTrackCard({ order }: { order: any }) {
             ))}
           </div>
 
-          {/* Items */}
           {order.order_items && order.order_items.length > 0 && (
             <div className="space-y-2">
               {order.order_items.map((item: any) => (
@@ -130,67 +128,75 @@ export default function UserDashboard() {
     <div className="fade-in bottom-nav-safe">
       <Helmet><meta name="robots" content="noindex, nofollow" /></Helmet>
 
-      {/* ── Hero Banner ── */}
-      <div className="glass-panel-dark mx-4 mt-4 p-5 relative overflow-hidden rounded-2xl">
-        <div className="absolute inset-0 opacity-5 bg-[url('https://www.transparenttextures.com/patterns/leaves.png')]" />
-        <div className="relative z-10">
-          <div className="flex items-center gap-2 mb-1">
-            <Leaf className="text-[#66bb6a] w-4 h-4" />
-            <span className="text-[rgba(200,230,201,0.8)] text-xs font-semibold">Welcome back</span>
-          </div>
-          <h1 className="text-2xl font-black text-white capitalize" style={{ fontFamily: 'Outfit,sans-serif' }}>{displayName}</h1>
-          <p className="text-[rgba(200,230,201,0.7)] text-xs mt-0.5">Keep saving our planet! 🌿</p>
+      <div className="max-w-4xl mx-auto px-4">
 
-          {/* G Coins badge */}
-          <div className="mt-4 inline-flex items-center gap-3 bg-black/25 border border-white/20 rounded-2xl px-5 py-3">
-            <GCoinIcon size={42} />
-            <p className="font-black text-white text-3xl leading-none" style={{ fontFamily: 'Outfit,sans-serif' }}>{totalPoints}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Quick Actions 2×2 grid ── */}
-      <div className="px-4 mt-5">
-        <h2 className="font-bold text-[#1a3d1f] text-sm uppercase tracking-wide mb-3">Quick Actions</h2>
-        <div className="grid grid-cols-2 gap-3">
-          {[
-            { to: '/rewards', icon: <Camera className="w-7 h-7 text-[#2e7d32]" />, bg: 'bg-[rgba(46,125,50,0.1)]', border: 'border-[rgba(46,125,50,0.15)]', label: 'Earn Points', sub: 'Upload waste photo' },
-            { to: '/shop', icon: <ShoppingBag className="w-7 h-7 text-amber-600" />, bg: 'bg-amber-50', border: 'border-amber-200', label: 'Shop', sub: 'Eco products' },
-            { to: '/events', icon: <Package className="w-7 h-7 text-blue-600" />, bg: 'bg-blue-50', border: 'border-blue-200', label: 'Events', sub: 'Community eco-events' },
-            { to: '/rewards', icon: <Gift className="w-7 h-7 text-[#ffb300]" />, bg: 'bg-amber-50', border: 'border-amber-200', label: 'Vouchers', sub: 'Redeem points' },
-          ].map(({ to, icon, bg, border, label, sub }) => (
-            <Link key={label} to={to} className={`glass-card p-4 flex flex-col gap-3 tap-card`}>
-              <div className={`${bg} p-3 rounded-xl border ${border} w-fit`}>{icon}</div>
-              <div>
-                <p className="font-bold text-[#1a3d1f] text-sm">{label}</p>
-                <p className="text-[10px] text-[#5f7a60] mt-0.5">{sub}</p>
+        {/* ── Hero Banner ── */}
+        <div className="mt-4 sm:mt-6 glass-panel-dark p-5 sm:p-8 relative overflow-hidden rounded-2xl">
+          <div className="absolute inset-0 opacity-5 bg-[url('https://www.transparenttextures.com/patterns/leaves.png')]" />
+          <div className="relative z-10 sm:flex sm:items-center sm:justify-between sm:gap-6">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <Leaf className="text-[#66bb6a] w-4 h-4" />
+                <span className="text-[rgba(200,230,201,0.8)] text-xs font-semibold">Welcome back</span>
               </div>
-            </Link>
-          ))}
-        </div>
-      </div>
-
-      {/* ── My Orders ── */}
-      <div className="px-4 mt-6 mb-4">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="font-bold text-[#1a3d1f] text-sm uppercase tracking-wide">My Orders</h2>
-          {recentOrders.length > 0 && (
-            <Link to="/shop" className="text-xs font-bold text-[#2e7d32] flex items-center gap-1">
-              Shop More <ArrowRight className="w-3 h-3" />
-            </Link>
-          )}
-        </div>
-        <div className="space-y-3">
-          {recentOrders.length === 0 ? (
-            <div className="glass-panel p-8 text-center">
-              <Package className="w-10 h-10 text-[rgba(46,125,50,0.2)] mx-auto mb-2" />
-              <p className="text-[#5f7a60] text-sm font-medium">No orders yet.</p>
-              <Link to="/shop" className="text-xs text-[#2e7d32] font-bold hover:underline mt-1 inline-block">Browse the shop</Link>
+              <h1 className="text-2xl sm:text-3xl font-black text-white capitalize" style={{ fontFamily: 'Outfit,sans-serif' }}>{displayName}</h1>
+              <p className="text-[rgba(200,230,201,0.7)] text-xs sm:text-sm mt-0.5">Keep saving our planet! 🌿</p>
             </div>
-          ) : (
-            recentOrders.map(order => <OrderTrackCard key={order.id} order={order} />)
-          )}
+            {/* G Coins badge */}
+            <div className="mt-4 sm:mt-0 inline-flex items-center gap-3 bg-black/25 border border-white/20 rounded-2xl px-5 py-3">
+              <GCoinIcon size={42} />
+              <div>
+                <p className="text-[rgba(200,230,201,0.7)] text-xs font-semibold">G Coins Balance</p>
+                <p className="font-black text-white text-3xl leading-none" style={{ fontFamily: 'Outfit,sans-serif' }}>{totalPoints}</p>
+              </div>
+            </div>
+          </div>
         </div>
+
+        {/* ── Quick Actions ── */}
+        <div className="mt-6">
+          <h2 className="font-bold text-[#1a3d1f] text-sm uppercase tracking-wide mb-3">Quick Actions</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+            {[
+              { to: '/rewards', icon: <Camera className="w-7 h-7 text-[#2e7d32]" />, bg: 'bg-[rgba(46,125,50,0.1)]', border: 'border-[rgba(46,125,50,0.15)]', label: 'Earn Points', sub: 'Upload waste photo' },
+              { to: '/shop', icon: <ShoppingBag className="w-7 h-7 text-amber-600" />, bg: 'bg-amber-50', border: 'border-amber-200', label: 'Shop', sub: 'Eco products' },
+              { to: '/events', icon: <Package className="w-7 h-7 text-blue-600" />, bg: 'bg-blue-50', border: 'border-blue-200', label: 'Events', sub: 'Community eco-events' },
+              { to: '/rewards', icon: <Gift className="w-7 h-7 text-[#ffb300]" />, bg: 'bg-amber-50', border: 'border-amber-200', label: 'Vouchers', sub: 'Redeem points' },
+            ].map(({ to, icon, bg, border, label, sub }) => (
+              <Link key={label} to={to} className="glass-card p-4 sm:p-5 flex flex-col gap-3 tap-card">
+                <div className={`${bg} p-3 rounded-xl border ${border} w-fit`}>{icon}</div>
+                <div>
+                  <p className="font-bold text-[#1a3d1f] text-sm">{label}</p>
+                  <p className="text-[10px] sm:text-xs text-[#5f7a60] mt-0.5">{sub}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        {/* ── My Orders ── */}
+        <div className="mt-6 mb-4">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-bold text-[#1a3d1f] text-sm uppercase tracking-wide">My Orders</h2>
+            {recentOrders.length > 0 && (
+              <Link to="/shop" className="text-xs font-bold text-[#2e7d32] flex items-center gap-1">
+                Shop More <ArrowRight className="w-3 h-3" />
+              </Link>
+            )}
+          </div>
+          <div className="space-y-3">
+            {recentOrders.length === 0 ? (
+              <div className="glass-panel p-8 text-center">
+                <Package className="w-10 h-10 text-[rgba(46,125,50,0.2)] mx-auto mb-2" />
+                <p className="text-[#5f7a60] text-sm font-medium">No orders yet.</p>
+                <Link to="/shop" className="text-xs text-[#2e7d32] font-bold hover:underline mt-1 inline-block">Browse the shop</Link>
+              </div>
+            ) : (
+              recentOrders.map(order => <OrderTrackCard key={order.id} order={order} />)
+            )}
+          </div>
+        </div>
+
       </div>
     </div>
   );

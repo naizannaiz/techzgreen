@@ -59,6 +59,7 @@ export default function Footer() {
               {[
                 { label: 'Home', to: '/' },
                 { label: 'About', to: '/about' },
+                { label: 'Featured Products', to: '/featured-products' },
                 { label: 'Shop', to: '/shop' },
                 { label: 'Events', to: '/events' },
                 { label: 'Earn Points', to: '/rewards' },
