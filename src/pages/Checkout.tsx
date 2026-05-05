@@ -4,8 +4,10 @@ import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
-import { MapPin, CheckCircle, Sparkles, ChevronDown, ChevronUp, Plus, Check } from 'lucide-react';
+import { MapPin, CheckCircle, Plus, Check } from 'lucide-react';
 import { GCoinIcon } from '../components/GCoin';
+import RedeemPanel from '../components/RedeemPanel';
+import { computeCartRedemption, isItemEligible } from '../lib/redeemCap';
 
 interface SavedAddress {
   id: string;
@@ -19,8 +21,8 @@ interface SavedAddress {
 const EMPTY_FORM = { fullname: '', street: '', city: '', state: '', zip_code: '' };
 
 export default function Checkout() {
-  const { items, totalAmount, clearCart } = useCart();
-  const { user, totalPoints, refreshPoints } = useAuth();
+  const { items, totalAmount, clearCart, redeemToggleMap, setRedeemToggle } = useCart();
+  const { user, refreshPoints, totalPoints } = useAuth();
   const navigate = useNavigate();
 
   const [step, setStep] = useState<1 | 2>(1);
@@ -35,20 +37,12 @@ export default function Checkout() {
 
   const [loading, setLoading] = useState(false);
 
-  // Points
-  const [pointToRs, setPointToRs] = useState(1);
-  const [usePoints, setUsePoints] = useState(false);
-  const [pointsToRedeem, setPointsToRedeem] = useState(0);
-
   useEffect(() => {
     if (items.length === 0) navigate('/shop');
     if (!user) navigate('/login');
   }, [items, user, navigate]);
 
   useEffect(() => {
-    supabase.from('app_settings').select('value').eq('key', 'point_to_rs').single()
-      .then(({ data }) => { if (data) setPointToRs(parseFloat(data.value)); });
-
     if (user) {
       supabase
         .from('user_addresses')
@@ -68,8 +62,8 @@ export default function Checkout() {
     }
   }, [user]);
 
-  const maxPointsDiscount = Math.min(totalPoints, Math.floor(totalAmount / pointToRs));
-  const discountAmount = usePoints ? pointsToRedeem * pointToRs : 0;
+  const { totalCoinsUsed: totalPointsToRedeem, totalDiscount: discountAmount, perItem: redemptionPerItem } =
+    computeCartRedemption(items, totalPoints, redeemToggleMap);
   const finalAmount = Math.max(0, totalAmount - discountAmount);
 
   // Save new address to DB and select it
@@ -107,16 +101,80 @@ export default function Checkout() {
       document.body.appendChild(script);
     });
 
+  // Step 1: insert pending order + items into DB. Returns the row, or null on error.
+  const createPendingOrder = async (addressId: string) => {
+    if (!user) return null;
+    const { data: orderData, error: orderError } = await supabase
+      .from('orders')
+      .insert({
+        user_id: user.id,
+        address_id: addressId,
+        total_amount: finalAmount,
+        status: finalAmount <= 0 ? 'paid' : 'pending',
+        points_used: totalPointsToRedeem,
+        points_discount_amount: discountAmount,
+      })
+      .select()
+      .single();
+    if (orderError || !orderData) {
+      console.error('Order Insert Error:', orderError);
+      alert('Failed to create order. Please try again.');
+      return null;
+    }
+    const { error: itemsError } = await supabase.from('order_items').insert(
+      items.map(item => ({
+        order_id: orderData.id,
+        product_id: (item.product as any).isPartnerProduct ? null : item.product.id,
+        partner_product_id: (item.product as any).isPartnerProduct ? item.product.id : null,
+        quantity: item.quantity,
+        price_at_time: item.product.price,
+      }))
+    );
+    if (itemsError) console.error('Items Insert Error:', itemsError);
+    return orderData;
+  };
+
+  // Free orders + post-payment success: deduct coins, decrement stock, refresh points, clear cart, nav.
+  const completeOrder = async (
+    orderId: string,
+    status: 'paid' | 'pending' | 'failed',
+    snapshotItems: typeof items,
+    coinsToDeduct: number,
+  ) => {
+    if (status === 'paid') {
+      if (user && coinsToDeduct > 0) {
+        await supabase.from('points_ledger').insert({
+          user_id: user.id,
+          points_change: -coinsToDeduct,
+          description: `Redeemed ${coinsToDeduct} G Coins on Order #${orderId.substring(0, 8).toUpperCase()}`,
+        });
+      }
+      await Promise.all(snapshotItems.map(async item => {
+        const table = (item.product as any).isPartnerProduct ? 'partner_products' : 'products';
+        await supabase.rpc('decrement_stock', { row_id: item.product.id, qty: item.quantity, tbl: table });
+      }));
+      await refreshPoints();
+    }
+    clearCart();
+    navigate(`/order-confirmation/${orderId}?status=${status}`);
+  };
+
   const handlePaymentSubmit = async () => {
     if (!user || !selectedAddressId) return;
     setLoading(true);
 
-    try {
-      // Use existing saved address ID — no new insert
-      const addressId = selectedAddressId;
+    // Snapshot cart + coins now — clearCart() runs later inside completeOrder.
+    const snapshotItems = items;
+    const coinsSnapshot = totalPointsToRedeem;
 
+    try {
+      const addressId = selectedAddressId;
+      const order = await createPendingOrder(addressId);
+      if (!order) { setLoading(false); return; }
+
+      // Free order — already marked paid in createPendingOrder; skip Razorpay.
       if (finalAmount <= 0) {
-        await finalizeOrder(addressId, null, null, null);
+        await completeOrder(order.id, 'paid', snapshotItems, coinsSnapshot);
         return;
       }
 
@@ -127,11 +185,25 @@ export default function Checkout() {
       const orderResponse = await fetch(`${backendUrl}/api/create-order`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: finalAmount, currency: 'INR', receipt: `rcpt_${user.id.substring(0, 8)}_${Date.now().toString().slice(-6)}` })
+        body: JSON.stringify({
+          amount: finalAmount,
+          currency: 'INR',
+          receipt: `rcpt_${user.id.substring(0, 8)}_${Date.now().toString().slice(-6)}`,
+          order_id: order.id,
+          items: items.map(it => ({
+            product_id: it.product.id,
+            quantity: it.quantity,
+            isPartner: !!(it.product as any).isPartnerProduct,
+          })),
+        }),
       });
       const orderData = await orderResponse.json();
 
-      if (!orderData || !orderData.id) { alert('Server error. Please try again.'); setLoading(false); return; }
+      if (!orderData || !orderData.id) {
+        alert(orderData?.error || 'Server error. Please try again.');
+        setLoading(false);
+        return;
+      }
 
       const selectedAddr = savedAddresses.find(a => a.id === addressId);
 
@@ -150,92 +222,50 @@ export default function Checkout() {
               body: JSON.stringify({
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature
-              })
+                razorpay_signature: response.razorpay_signature,
+                order_id: order.id,
+              }),
             });
             const verifyData = await verifyResponse.json();
             if (verifyData.verified) {
-              await finalizeOrder(addressId, response.razorpay_order_id, response.razorpay_payment_id, response.razorpay_signature);
+              await completeOrder(order.id, 'paid', snapshotItems, coinsSnapshot);
             } else {
-              alert('Payment verification failed!');
+              await completeOrder(order.id, 'failed', snapshotItems, 0);
             }
           } catch (err) {
             console.error('Verification error:', err);
-            alert('Payment verification error.');
+            await completeOrder(order.id, 'failed', snapshotItems, 0);
           }
+        },
+        modal: {
+          ondismiss: () => {
+            // User closed Razorpay without paying. Order stays 'pending' — they can retry from confirmation page.
+            completeOrder(order.id, 'pending', snapshotItems, 0);
+          },
+          escape: true,
         },
         prefill: {
           name: selectedAddr?.fullname || '',
           email: user.email,
         },
-        theme: { color: '#2e7d32' }
+        theme: { color: '#2e7d32' },
       };
 
       const paymentObject = new (window as any).Razorpay(options);
+      paymentObject.on('payment.failed', async (resp: any) => {
+        console.warn('payment.failed:', resp?.error);
+        await supabase.from('orders').update({
+          status: 'failed',
+          last_payment_error: resp?.error?.description || 'payment_failed',
+        }).eq('id', order.id);
+        await completeOrder(order.id, 'failed', snapshotItems, 0);
+      });
       paymentObject.open();
       setLoading(false);
 
     } catch (error) {
       console.error('Payment flow failed:', error);
       alert('Failed to process. Please try again.');
-      setLoading(false);
-    }
-  };
-
-  const finalizeOrder = async (addressId: string, rzp_order_id: string | null, rzp_payment_id: string | null, rzp_signature: string | null) => {
-    if (!user) return;
-    try {
-      setLoading(true);
-      const { data: orderData, error: orderError } = await supabase
-        .from('orders')
-        .insert({
-          user_id: user.id,
-          address_id: addressId,
-          total_amount: finalAmount,
-          status: 'paid',
-          points_used: usePoints ? pointsToRedeem : 0,
-          points_discount_amount: discountAmount,
-          razorpay_order_id: rzp_order_id,
-          razorpay_payment_id: rzp_payment_id,
-          razorpay_signature: rzp_signature
-        })
-        .select()
-        .single();
-
-      if (orderError) { console.error('Order Insert Error:', orderError); throw orderError; }
-
-      const { error: itemsError } = await supabase
-        .from('order_items')
-        .insert(items.map(item => ({
-          order_id: orderData.id,
-          product_id: (item.product as any).isPartnerProduct ? null : item.product.id,
-          partner_product_id: (item.product as any).isPartnerProduct ? item.product.id : null,
-          quantity: item.quantity,
-          price_at_time: item.product.price,
-        })));
-
-      if (itemsError) { console.error('Items Insert Error:', itemsError); throw itemsError; }
-
-      await Promise.all(items.map(async item => {
-        const table = (item.product as any).isPartnerProduct ? 'partner_products' : 'products';
-        await supabase.rpc('decrement_stock', { row_id: item.product.id, qty: item.quantity, tbl: table });
-      }));
-
-      if (usePoints && pointsToRedeem > 0) {
-        await supabase.from('points_ledger').insert({
-          user_id: user.id,
-          points_change: -pointsToRedeem,
-          description: `Redeemed ${pointsToRedeem} pts for ₹${discountAmount.toFixed(2)} discount on Order #${orderData.id.substring(0, 8).toUpperCase()}`,
-        });
-        await refreshPoints();
-      }
-
-      clearCart();
-      navigate(`/order-confirmation/${orderData.id}`);
-    } catch (error) {
-      console.error('Finalizing order failed:', error);
-      alert('Order placed but failed to update status. Please contact support.');
-    } finally {
       setLoading(false);
     }
   };
@@ -378,13 +408,49 @@ export default function Checkout() {
             {/* Order Summary */}
             <div className="glass-panel p-6">
               <h3 className="font-bold text-[#1a3d1f] mb-3">Order Summary</h3>
-              <div className="space-y-2 mb-4">
-                {items.map(item => (
-                  <div key={item.product.id} className="flex justify-between text-sm text-[#5f7a60]">
-                    <span>{item.product.name} × {item.quantity}</span>
-                    <span className="font-semibold">₹{(Number(item.product.price) * item.quantity).toFixed(2)}</span>
-                  </div>
-                ))}
+              <div className="space-y-3 mb-4">
+                {items.map(item => {
+                  const eligible = isItemEligible(item);
+                  const toggled = !!redeemToggleMap[item.product.id];
+                  const r = redemptionPerItem[item.product.id];
+                  return (
+                    <div key={item.product.id} className="text-sm">
+                      <div className="flex justify-between text-[#5f7a60]">
+                        <span>{item.product.name} × {item.quantity}</span>
+                        <span className="font-semibold">₹{(Number(item.product.price) * item.quantity).toFixed(2)}</span>
+                      </div>
+                      {eligible && (
+                        <div className="flex items-center justify-between mt-1">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <span className="text-[11px] font-bold text-[#2d4a30] flex items-center gap-1">
+                              <GCoinIcon size={14} /> Redeem Coins
+                            </span>
+                            <input
+                              type="checkbox"
+                              checked={toggled}
+                              onChange={(e) => setRedeemToggle(item.product.id, e.target.checked)}
+                              className="sr-only peer"
+                            />
+                            <div className="w-9 h-5 bg-gray-200 peer-checked:bg-[#2e7d32] rounded-full relative transition-colors">
+                              <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${toggled ? 'translate-x-4' : ''}`} />
+                            </div>
+                            <span className="text-[10px] text-[#5f7a60]">
+                              {item.product.redeem_discount_percent}% off · {item.product.redeem_coins_required} G/unit
+                            </span>
+                          </label>
+                          {toggled && r && r.unitsRedeemed > 0 && (
+                            <span className="text-[11px] text-green-700 font-bold">
+                              {r.unitsRedeemed}/{item.quantity} · −{r.coinsUsed} G · −₹{r.discountAmount.toFixed(2)}
+                            </span>
+                          )}
+                          {toggled && r && r.unitsRedeemed === 0 && (
+                            <span className="text-[11px] text-amber-700">Not enough G Coins</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
               <div className="border-t border-[rgba(46,125,50,0.1)] pt-3 flex justify-between">
                 <span className="text-[#5f7a60] font-semibold">Subtotal</span>
@@ -392,50 +458,8 @@ export default function Checkout() {
               </div>
             </div>
 
-            {/* Points Redemption */}
-            {totalPoints > 0 && (
-              <div className="glass-panel p-6">
-                <button
-                  onClick={() => { setUsePoints(!usePoints); if (usePoints) setPointsToRedeem(0); }}
-                  className="w-full flex items-center justify-between cursor-pointer"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="bg-amber-50 border border-amber-200 p-2 rounded-xl">
-                      <GCoinIcon size={28} />
-                    </div>
-                    <div className="text-left">
-                      <p className="font-bold text-[#1a3d1f] text-sm">Redeem G Coins</p>
-                      <p className="text-xs text-[#5f7a60]">You have <strong>{totalPoints} G Coins</strong> · 1 G Coin = ₹{pointToRs.toFixed(2)}</p>
-                    </div>
-                  </div>
-                  {usePoints ? <ChevronUp className="w-4 h-4 text-[#5f7a60]" /> : <ChevronDown className="w-4 h-4 text-[#5f7a60]" />}
-                </button>
-
-                {usePoints && (
-                  <div className="mt-4 space-y-3">
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="range" min={0} max={maxPointsDiscount} value={pointsToRedeem}
-                        onChange={e => setPointsToRedeem(parseInt(e.target.value))}
-                        className="flex-grow accent-[#2e7d32]"
-                      />
-                      <span className="font-black text-[#2e7d32] text-sm w-24 text-right">{pointsToRedeem} G Coins</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-[#5f7a60]">Discount Applied</span>
-                      <span className="font-bold text-green-700 flex items-center gap-1">
-                        <Sparkles className="w-3.5 h-3.5" /> −₹{discountAmount.toFixed(2)}
-                      </span>
-                    </div>
-                    <div className="flex gap-2">
-                      <button onClick={() => setPointsToRedeem(0)} className="text-xs text-[#5f7a60] hover:text-[#2e7d32] cursor-pointer">Use 0</button>
-                      <span className="text-[#5f7a60]">·</span>
-                      <button onClick={() => setPointsToRedeem(maxPointsDiscount)} className="text-xs text-[#5f7a60] hover:text-[#2e7d32] cursor-pointer font-bold">Use Max ({maxPointsDiscount} G Coins)</button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
+            {/* Points Redemption (shared with Cart page) */}
+            <RedeemPanel />
 
             {/* Total */}
             <div className="glass-panel p-6">

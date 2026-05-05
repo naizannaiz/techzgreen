@@ -7,10 +7,10 @@ export let mockUsers: User[] = [
 ];
 
 const INITIAL_PRODUCTS: Product[] = [
-  { id: '1', name: 'Recycled Plastic Planter Box', description: 'A durable and colorful planter box made entirely from upcycled plastic waste with eco-friendly rope handles. Perfect for indoor or patio plants.', price: 10, image_url: '/planter.jpg', stock: 10 },
-  { id: '2', name: 'Eco-Friendly Reusable Bag', description: 'A durable bag made from 100% recycled plastic.', price: 5, image_url: 'https://images.unsplash.com/photo-1597349666014-41d92790d984?auto=format&fit=crop&q=80&w=400', stock: 10 },
-  { id: '3', name: 'Bamboo Toothbrush Set', description: 'Sustainable bamboo toothbrushes, a perfect alternative to plastic.', price: 2, image_url: 'https://images.unsplash.com/photo-1605600659929-e85df649f87c?auto=format&fit=crop&q=80&w=400', stock: 10 },
-  { id: '4', name: 'Recycled Glass Water Bottle', description: 'Stay hydrated with a premium recycled glass bottle.', price: 15, image_url: 'https://images.unsplash.com/photo-1602143407151-7111542de6e8?auto=format&fit=crop&q=80&w=400', stock: 10 }
+  { id: '1', name: 'Recycled Plastic Planter Box', description: 'A durable and colorful planter box made entirely from upcycled plastic waste with eco-friendly rope handles. Perfect for indoor or patio plants.', price: 10, image_url: '/planter.jpg', stock: 10, redeem_discount_percent: null, redeem_coins_required: null },
+  { id: '2', name: 'Eco-Friendly Reusable Bag', description: 'A durable bag made from 100% recycled plastic.', price: 5, image_url: 'https://images.unsplash.com/photo-1597349666014-41d92790d984?auto=format&fit=crop&q=80&w=400', stock: 10, redeem_discount_percent: null, redeem_coins_required: null },
+  { id: '3', name: 'Bamboo Toothbrush Set', description: 'Sustainable bamboo toothbrushes, a perfect alternative to plastic.', price: 2, image_url: 'https://images.unsplash.com/photo-1605600659929-e85df649f87c?auto=format&fit=crop&q=80&w=400', stock: 10, redeem_discount_percent: null, redeem_coins_required: null },
+  { id: '4', name: 'Recycled Glass Water Bottle', description: 'Stay hydrated with a premium recycled glass bottle.', price: 15, image_url: 'https://images.unsplash.com/photo-1602143407151-7111542de6e8?auto=format&fit=crop&q=80&w=400', stock: 10, redeem_discount_percent: null, redeem_coins_required: null }
 ];
 
 export function getMockProducts(): Product[] {

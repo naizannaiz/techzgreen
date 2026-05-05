@@ -71,6 +71,7 @@ CREATE TABLE IF NOT EXISTS public.products (
   price DECIMAL(10,2) NOT NULL,
   image_url TEXT,
   stock INTEGER DEFAULT 0,
+  max_redeemable_points INTEGER,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -210,6 +211,10 @@ CREATE TABLE IF NOT EXISTS public.event_registrations (
   full_name TEXT NOT NULL,
   email TEXT NOT NULL,
   phone TEXT,
+  age INTEGER,
+  gender TEXT,
+  profession TEXT,
+  location TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(event_id, user_id)
 );
@@ -364,6 +369,57 @@ ALTER TABLE public.partner_products ENABLE ROW LEVEL SECURITY;
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='partner_products' AND policyname='All partner_products') THEN
     CREATE POLICY "All partner_products" ON public.partner_products FOR ALL USING (true);
+  END IF;
+END $$;
+
+-- =====================================================
+-- PAYMENT HARDENING (additive — does not break current frontend)
+-- =====================================================
+
+-- Extend order_status enum (failed)
+DO $$ BEGIN
+  ALTER TYPE order_status ADD VALUE IF NOT EXISTS 'failed';
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+-- Order tracking columns
+ALTER TABLE public.orders
+  ADD COLUMN IF NOT EXISTS payment_attempts INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS last_payment_error TEXT;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_rzp_order
+  ON public.orders(razorpay_order_id) WHERE razorpay_order_id IS NOT NULL;
+
+-- Atomic finalize RPC — called by /verify-payment.
+-- Idempotent: only first call flips status + writes ledger row.
+CREATE OR REPLACE FUNCTION public.finalize_order_payment(
+  p_order_id UUID,
+  p_payment_id TEXT,
+  p_signature TEXT
+) RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_user UUID;
+  v_pts INT;
+  v_status order_status;
+BEGIN
+  SELECT user_id, points_used, status
+    INTO v_user, v_pts, v_status
+    FROM orders WHERE id = p_order_id FOR UPDATE;
+
+  IF v_status = 'paid' THEN RETURN; END IF;
+
+  UPDATE orders SET
+    status = 'paid',
+    razorpay_payment_id = COALESCE(p_payment_id, razorpay_payment_id),
+    razorpay_signature  = COALESCE(p_signature,  razorpay_signature)
+   WHERE id = p_order_id;
+
+  IF v_pts > 0 THEN
+    INSERT INTO points_ledger(user_id, points_change, description)
+      VALUES (v_user, -v_pts, 'Order #' || substring(p_order_id::text, 1, 8));
   END IF;
 END $$;
 

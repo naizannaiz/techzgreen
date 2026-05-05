@@ -13,12 +13,19 @@ interface CartContextType {
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
   totalAmount: number;
+  redeemToggleMap: Record<string, boolean>;
+  setRedeemToggle: (productId: string, on: boolean) => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   const [items, setItems] = useState<CartItem[]>([]);
+  const [redeemToggleMap, setRedeemToggleMap] = useState<Record<string, boolean>>({});
+
+  const setRedeemToggle = (productId: string, on: boolean) => {
+    setRedeemToggleMap((prev) => ({ ...prev, [productId]: on }));
+  };
 
   const addToCart = (product: Product) => {
     setItems((prev) => {
@@ -36,6 +43,10 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
 
   const removeFromCart = (productId: string) => {
     setItems((prev) => prev.filter((item) => item.product.id !== productId));
+    setRedeemToggleMap((prev) => {
+      const { [productId]: _, ...rest } = prev;
+      return rest;
+    });
   };
 
   const updateQuantity = (productId: string, quantity: number) => {
@@ -52,6 +63,7 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
 
   const clearCart = () => {
     setItems([]);
+    setRedeemToggleMap({});
   };
 
   const totalAmount = items.reduce(
@@ -68,6 +80,8 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
         updateQuantity,
         clearCart,
         totalAmount,
+        redeemToggleMap,
+        setRedeemToggle,
       }}
     >
       {children}

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
-import { X, User, Mail, Phone, Calendar, MapPin, Loader } from 'lucide-react';
+import { X, User, Mail, Phone, Calendar, MapPin, Loader, Briefcase, Users, Hash } from 'lucide-react';
 
 type Event = {
   id: string;
@@ -21,7 +21,15 @@ type Props = {
 
 export default function EventRegistrationModal({ event, onClose, onSuccess }: Props) {
   const { user } = useAuth();
-  const [form, setForm] = useState({ full_name: '', email: user?.email || '', phone: '' });
+  const [form, setForm] = useState({
+    full_name: '',
+    email: user?.email || '',
+    phone: '',
+    age: '',
+    gender: '',
+    profession: '',
+    location: '',
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -38,6 +46,10 @@ export default function EventRegistrationModal({ event, onClose, onSuccess }: Pr
         full_name: form.full_name,
         email: form.email,
         phone: form.phone,
+        age: form.age === '' ? null : parseInt(form.age, 10),
+        gender: form.gender || null,
+        profession: form.profession || null,
+        location: form.location || null,
       });
 
       if (regError) {
@@ -59,16 +71,16 @@ export default function EventRegistrationModal({ event, onClose, onSuccess }: Pr
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
 
       {/* Modal */}
-      <div className="relative z-10 w-full max-w-lg glass-panel p-0 overflow-hidden" onClick={e => e.stopPropagation()}>
+      <div className="relative z-10 w-full max-w-lg glass-panel p-0 overflow-hidden max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
         {/* Header with poster */}
         {event.poster_url && (
-          <div className="relative h-40 overflow-hidden">
+          <div className="relative h-32 overflow-hidden flex-shrink-0">
             <img src={event.poster_url} alt={event.title} loading="lazy" className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/50"></div>
           </div>
         )}
 
-        <div className="p-6">
+        <div className="p-6 overflow-y-auto">
           <div className="flex items-start justify-between mb-4">
             <div>
               <h2 className="text-xl font-black text-[#1a3d1f]">{event.title}</h2>
@@ -119,6 +131,50 @@ export default function EventRegistrationModal({ event, onClose, onSuccess }: Pr
                   placeholder="+91 98765 43210" className="input-glass" style={{ paddingLeft: '2.5rem' }} />
               </div>
             </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-bold text-[#2d4a30] mb-1.5">Age</label>
+                <div className="relative">
+                  <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f7a60]" />
+                  <input type="number" min="1" max="120" value={form.age} onChange={e => setForm(f => ({...f, age: e.target.value}))}
+                    placeholder="25" className="input-glass" style={{ paddingLeft: '2.5rem' }} />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-[#2d4a30] mb-1.5">Gender</label>
+                <div className="relative">
+                  <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f7a60] pointer-events-none z-10" />
+                  <select value={form.gender} onChange={e => setForm(f => ({...f, gender: e.target.value}))}
+                    className="input-glass appearance-none" style={{ paddingLeft: '2.5rem' }}>
+                    <option value="">Select…</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                    <option value="prefer_not_to_say">Prefer not to say</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-[#2d4a30] mb-1.5">Profession</label>
+              <div className="relative">
+                <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f7a60]" />
+                <input value={form.profession} onChange={e => setForm(f => ({...f, profession: e.target.value}))}
+                  placeholder="e.g. Student, Engineer, Teacher" className="input-glass" style={{ paddingLeft: '2.5rem' }} />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-[#2d4a30] mb-1.5">Location</label>
+              <div className="relative">
+                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5f7a60]" />
+                <input value={form.location} onChange={e => setForm(f => ({...f, location: e.target.value}))}
+                  placeholder="City, State" className="input-glass" style={{ paddingLeft: '2.5rem' }} />
+              </div>
+            </div>
+
             <div className="flex gap-3 pt-2">
               <button type="button" onClick={onClose}
                 className="flex-1 py-2.5 rounded-xl border border-[rgba(46,125,50,0.2)] text-[#2d4a30] font-semibold hover:bg-[rgba(46,125,50,0.05)] transition-colors cursor-pointer text-sm">

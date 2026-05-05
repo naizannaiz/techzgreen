@@ -1,10 +1,18 @@
 import { Helmet } from 'react-helmet-async';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import { Trash2, ShoppingBag, ArrowRight, Minus, Plus } from 'lucide-react';
+import RedeemPanel from '../components/RedeemPanel';
+import { computeCartRedemption, isItemEligible } from '../lib/redeemCap';
+import { GCoinIcon } from '../components/GCoin';
 
 export default function Cart() {
-  const { items, updateQuantity, removeFromCart, totalAmount } = useCart();
+  const { items, updateQuantity, removeFromCart, totalAmount, redeemToggleMap, setRedeemToggle } = useCart();
+  const { totalPoints } = useAuth();
+
+  const { totalDiscount: discountAmount, perItem } = computeCartRedemption(items, totalPoints, redeemToggleMap);
+  const finalAmount = Math.max(0, totalAmount - discountAmount);
 
   if (items.length === 0) {
     return (
@@ -43,9 +51,14 @@ export default function Cart() {
       {/* ── Desktop: 2-col, Mobile: stacked ── */}
       <div className="px-4 pt-5 max-w-5xl mx-auto sm:flex sm:gap-8 sm:items-start">
 
-        {/* Left: Item list */}
+        {/* Left: Item list + redeem panel */}
         <div className="flex-grow space-y-3 sm:min-w-0">
-          {items.map(({ product, quantity }) => (
+          {items.map(({ product, quantity }) => {
+            const eligible = isItemEligible({ product, quantity });
+            const r = perItem[product.id];
+            const toggled = !!redeemToggleMap[product.id];
+            const insufficient = eligible && toggled && r && r.unitsRedeemed < quantity;
+            return (
             <div key={product.id} className="glass-card p-3 sm:p-4 flex gap-3 sm:gap-4 items-center">
               <img
                 src={product.image_url}
@@ -57,6 +70,11 @@ export default function Cart() {
                 <p className="font-black text-[#2e7d32] text-base sm:text-lg mt-0.5" style={{ fontFamily: 'Outfit, sans-serif' }}>
                   ₹{Number(product.price).toFixed(0)}
                 </p>
+                {(product.redeem_discount_percent ?? 0) > 0 && (product.redeem_coins_required ?? 0) > 0 && (
+                  <p className="text-[11px] text-amber-700 mt-0.5">
+                    {product.redeem_discount_percent}% off for {product.redeem_coins_required} G Coins / unit
+                  </p>
+                )}
                 <div className="flex items-center gap-2 mt-2">
                   <div className="flex items-center border border-[rgba(46,125,50,0.2)] rounded-xl overflow-hidden bg-white/60">
                     <button onClick={() => updateQuantity(product.id, quantity - 1)} className="px-3 py-1.5 text-[#2d4a30] hover:bg-[rgba(46,125,50,0.08)] transition-colors cursor-pointer">
@@ -69,6 +87,22 @@ export default function Cart() {
                       <Plus className="w-3.5 h-3.5" />
                     </button>
                   </div>
+                  {eligible && (
+                    <label className="flex items-center gap-1.5 cursor-pointer" title={`Redeem ${product.redeem_coins_required} G/unit for ${product.redeem_discount_percent}% off`}>
+                      <span className="text-[11px] font-bold text-[#2d4a30] flex items-center gap-1">
+                        <GCoinIcon size={14} /> Redeem Coins
+                      </span>
+                      <input
+                        type="checkbox"
+                        checked={toggled}
+                        onChange={(e) => setRedeemToggle(product.id, e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-9 h-5 bg-gray-200 peer-checked:bg-[#2e7d32] rounded-full relative transition-colors">
+                        <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${toggled ? 'translate-x-4' : ''}`} />
+                      </div>
+                    </label>
+                  )}
                   <span className="ml-auto text-xs sm:text-sm font-bold text-[#5f7a60]">
                     ₹{(Number(product.price) * quantity).toFixed(0)}
                   </span>
@@ -76,9 +110,20 @@ export default function Cart() {
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
+                {eligible && toggled && r && r.unitsRedeemed > 0 && (
+                  <p className="text-[11px] text-green-700 font-bold mt-1">
+                    Redeem {r.unitsRedeemed}/{quantity} unit{r.unitsRedeemed !== 1 ? 's' : ''} · −{r.coinsUsed} G · −₹{r.discountAmount.toFixed(2)}
+                    {insufficient && ' (balance limit)'}
+                  </p>
+                )}
+                {eligible && toggled && r && r.unitsRedeemed === 0 && (
+                  <p className="text-[11px] text-amber-700 mt-1">Not enough G Coins.</p>
+                )}
               </div>
             </div>
-          ))}
+          );})}
+
+          <RedeemPanel />
         </div>
 
         {/* Right: Order Summary — desktop sidebar, mobile hidden (uses sticky bar) */}
@@ -93,11 +138,23 @@ export default function Cart() {
                 </div>
               ))}
             </div>
-            <div className="border-t border-[rgba(46,125,50,0.12)] pt-3 flex justify-between items-center">
-              <span className="font-bold text-[#2d4a30]">Subtotal</span>
-              <span className="font-black text-[#2e7d32] text-2xl" style={{ fontFamily: 'Outfit,sans-serif' }}>
-                ₹{totalAmount.toFixed(2)}
-              </span>
+            <div className="border-t border-[rgba(46,125,50,0.12)] pt-3 space-y-2">
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-[#5f7a60] font-semibold">Subtotal</span>
+                <span className="font-bold text-[#2d4a30]">₹{totalAmount.toFixed(2)}</span>
+              </div>
+              {discountAmount > 0 && (
+                <div className="flex justify-between items-center text-sm text-green-700">
+                  <span>G Coins Discount</span>
+                  <span className="font-bold">−₹{discountAmount.toFixed(2)}</span>
+                </div>
+              )}
+              <div className="flex justify-between items-center pt-1">
+                <span className="font-bold text-[#2d4a30]">Total</span>
+                <span className="font-black text-[#2e7d32] text-2xl" style={{ fontFamily: 'Outfit,sans-serif' }}>
+                  ₹{finalAmount.toFixed(2)}
+                </span>
+              </div>
             </div>
             <Link to="/checkout" className="btn-accent w-full flex items-center justify-center gap-2 !py-3">
               Proceed to Checkout <ArrowRight className="w-4 h-4" />
@@ -113,9 +170,11 @@ export default function Cart() {
       {/* ── Sticky bottom bar (mobile only) ── */}
       <div className="sticky-bottom-bar sm:hidden flex items-center gap-3">
         <div className="flex-grow min-w-0">
-          <p className="text-xs text-[#5f7a60] font-semibold">Total</p>
+          <p className="text-xs text-[#5f7a60] font-semibold">
+            {discountAmount > 0 ? `Total (−₹${discountAmount.toFixed(0)})` : 'Total'}
+          </p>
           <p className="font-black text-[#1a3d1f] text-xl" style={{ fontFamily: 'Outfit,sans-serif' }}>
-            ₹{totalAmount.toFixed(2)}
+            ₹{finalAmount.toFixed(2)}
           </p>
         </div>
         <Link to="/checkout" className="flex-shrink-0 flex items-center gap-2 bg-[#2e7d32] text-white font-black text-sm px-6 py-3 rounded-xl shadow-lg active:scale-95 transition-transform">
