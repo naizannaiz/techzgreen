@@ -1,25 +1,57 @@
 import type { CartItem } from '../context/CartContext';
 
-// Per-item hard cap: bounded by product cap (∞ if NULL) AND item subtotal in points.
-export function itemRedeemCap(item: CartItem, pointToRs: number): number {
-  if (pointToRs <= 0) return 0;
-  const itemSubtotal = item.product.price * item.quantity;
-  const valueCap = Math.floor(itemSubtotal / pointToRs);
-  const lim = item.product.max_redeemable_points;
-  const productCap = lim == null ? Infinity : lim * item.quantity;
-  return Math.max(0, Math.min(valueCap, productCap));
+export interface ItemRedemption {
+  unitsRedeemed: number;
+  coinsUsed: number;
+  discountAmount: number;
+  perUnitDiscount: number;
+  coinsPerUnit: number;
+  discountPercent: number;
+  eligible: boolean;
 }
 
-// Effective live max for a single item, given other items already consume some of the user's balance.
-export function effectiveItemMax(
-  item: CartItem,
-  pointToRs: number,
-  totalPoints: number,
-  redeemMap: Record<string, number>
-): number {
-  const otherUsed = Object.entries(redeemMap)
-    .filter(([id]) => id !== item.product.id)
-    .reduce((s, [, v]) => s + (v || 0), 0);
-  const remainingBudget = Math.max(0, totalPoints - otherUsed);
-  return Math.min(itemRedeemCap(item, pointToRs), remainingBudget);
+export function isItemEligible(item: CartItem): boolean {
+  return (Number(item.product.redeem_discount_percent) || 0) > 0
+      && (Number(item.product.redeem_coins_required) || 0) > 0;
+}
+
+// Greedy allocation: each toggled item consumes coinsPerUnit × quantity (capped by remaining balance).
+export function computeCartRedemption(
+  items: CartItem[],
+  totalCoins: number,
+  toggleMap: Record<string, boolean>,
+) {
+  let remaining = totalCoins;
+  const perItem: Record<string, ItemRedemption> = {};
+  let totalCoinsUsed = 0;
+  let totalDiscount = 0;
+
+  for (const item of items) {
+    const pct = Number(item.product.redeem_discount_percent) || 0;
+    const coinsPerUnit = Number(item.product.redeem_coins_required) || 0;
+    const eligible = pct > 0 && coinsPerUnit > 0;
+    const perUnitDiscount = eligible ? (item.product.price * pct) / 100 : 0;
+
+    let unitsRedeemed = 0;
+    if (eligible && toggleMap[item.product.id]) {
+      const affordable = Math.floor(remaining / coinsPerUnit);
+      unitsRedeemed = Math.min(item.quantity, affordable);
+    }
+    const coinsUsed = unitsRedeemed * coinsPerUnit;
+    const discountAmount = unitsRedeemed * perUnitDiscount;
+    remaining -= coinsUsed;
+    totalCoinsUsed += coinsUsed;
+    totalDiscount += discountAmount;
+
+    perItem[item.product.id] = {
+      unitsRedeemed,
+      coinsUsed,
+      discountAmount,
+      perUnitDiscount,
+      coinsPerUnit,
+      discountPercent: pct,
+      eligible,
+    };
+  }
+  return { perItem, totalCoinsUsed, totalDiscount };
 }

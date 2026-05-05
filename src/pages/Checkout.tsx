@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase';
 import { MapPin, CheckCircle, Plus, Check } from 'lucide-react';
 import { GCoinIcon } from '../components/GCoin';
 import RedeemPanel from '../components/RedeemPanel';
+import { computeCartRedemption, isItemEligible } from '../lib/redeemCap';
 
 interface SavedAddress {
   id: string;
@@ -20,8 +21,8 @@ interface SavedAddress {
 const EMPTY_FORM = { fullname: '', street: '', city: '', state: '', zip_code: '' };
 
 export default function Checkout() {
-  const { items, totalAmount, clearCart, totalPointsToRedeem } = useCart();
-  const { user, refreshPoints } = useAuth();
+  const { items, totalAmount, clearCart, redeemToggleMap, setRedeemToggle } = useCart();
+  const { user, refreshPoints, totalPoints } = useAuth();
   const navigate = useNavigate();
 
   const [step, setStep] = useState<1 | 2>(1);
@@ -36,18 +37,12 @@ export default function Checkout() {
 
   const [loading, setLoading] = useState(false);
 
-  // Points (usePoints + pointsToRedeem live in CartContext for cart→checkout sharing)
-  const [pointToRs, setPointToRs] = useState(1);
-
   useEffect(() => {
     if (items.length === 0) navigate('/shop');
     if (!user) navigate('/login');
   }, [items, user, navigate]);
 
   useEffect(() => {
-    supabase.from('app_settings').select('value').eq('key', 'point_to_rs').single()
-      .then(({ data }) => { if (data) setPointToRs(parseFloat(data.value)); });
-
     if (user) {
       supabase
         .from('user_addresses')
@@ -67,7 +62,8 @@ export default function Checkout() {
     }
   }, [user]);
 
-  const discountAmount = totalPointsToRedeem * pointToRs;
+  const { totalCoinsUsed: totalPointsToRedeem, totalDiscount: discountAmount, perItem: redemptionPerItem } =
+    computeCartRedemption(items, totalPoints, redeemToggleMap);
   const finalAmount = Math.max(0, totalAmount - discountAmount);
 
   // Save new address to DB and select it
@@ -138,10 +134,22 @@ export default function Checkout() {
     return orderData;
   };
 
-  // Free orders + post-payment success: decrement stock, refresh points, clear cart, nav.
-  const completeOrder = async (orderId: string, status: 'paid' | 'pending' | 'failed') => {
+  // Free orders + post-payment success: deduct coins, decrement stock, refresh points, clear cart, nav.
+  const completeOrder = async (
+    orderId: string,
+    status: 'paid' | 'pending' | 'failed',
+    snapshotItems: typeof items,
+    coinsToDeduct: number,
+  ) => {
     if (status === 'paid') {
-      await Promise.all(items.map(async item => {
+      if (user && coinsToDeduct > 0) {
+        await supabase.from('points_ledger').insert({
+          user_id: user.id,
+          points_change: -coinsToDeduct,
+          description: `Redeemed ${coinsToDeduct} G Coins on Order #${orderId.substring(0, 8).toUpperCase()}`,
+        });
+      }
+      await Promise.all(snapshotItems.map(async item => {
         const table = (item.product as any).isPartnerProduct ? 'partner_products' : 'products';
         await supabase.rpc('decrement_stock', { row_id: item.product.id, qty: item.quantity, tbl: table });
       }));
@@ -155,6 +163,10 @@ export default function Checkout() {
     if (!user || !selectedAddressId) return;
     setLoading(true);
 
+    // Snapshot cart + coins now — clearCart() runs later inside completeOrder.
+    const snapshotItems = items;
+    const coinsSnapshot = totalPointsToRedeem;
+
     try {
       const addressId = selectedAddressId;
       const order = await createPendingOrder(addressId);
@@ -162,14 +174,7 @@ export default function Checkout() {
 
       // Free order — already marked paid in createPendingOrder; skip Razorpay.
       if (finalAmount <= 0) {
-        if (totalPointsToRedeem > 0) {
-          await supabase.from('points_ledger').insert({
-            user_id: user.id,
-            points_change: -totalPointsToRedeem,
-            description: `Redeemed ${totalPointsToRedeem} G Coins on Order #${order.id.substring(0, 8).toUpperCase()}`,
-          });
-        }
-        await completeOrder(order.id, 'paid');
+        await completeOrder(order.id, 'paid', snapshotItems, coinsSnapshot);
         return;
       }
 
@@ -223,19 +228,19 @@ export default function Checkout() {
             });
             const verifyData = await verifyResponse.json();
             if (verifyData.verified) {
-              await completeOrder(order.id, 'paid');
+              await completeOrder(order.id, 'paid', snapshotItems, coinsSnapshot);
             } else {
-              await completeOrder(order.id, 'failed');
+              await completeOrder(order.id, 'failed', snapshotItems, 0);
             }
           } catch (err) {
             console.error('Verification error:', err);
-            await completeOrder(order.id, 'failed');
+            await completeOrder(order.id, 'failed', snapshotItems, 0);
           }
         },
         modal: {
           ondismiss: () => {
             // User closed Razorpay without paying. Order stays 'pending' — they can retry from confirmation page.
-            completeOrder(order.id, 'pending');
+            completeOrder(order.id, 'pending', snapshotItems, 0);
           },
           escape: true,
         },
@@ -253,7 +258,7 @@ export default function Checkout() {
           status: 'failed',
           last_payment_error: resp?.error?.description || 'payment_failed',
         }).eq('id', order.id);
-        await completeOrder(order.id, 'failed');
+        await completeOrder(order.id, 'failed', snapshotItems, 0);
       });
       paymentObject.open();
       setLoading(false);
@@ -403,13 +408,49 @@ export default function Checkout() {
             {/* Order Summary */}
             <div className="glass-panel p-6">
               <h3 className="font-bold text-[#1a3d1f] mb-3">Order Summary</h3>
-              <div className="space-y-2 mb-4">
-                {items.map(item => (
-                  <div key={item.product.id} className="flex justify-between text-sm text-[#5f7a60]">
-                    <span>{item.product.name} × {item.quantity}</span>
-                    <span className="font-semibold">₹{(Number(item.product.price) * item.quantity).toFixed(2)}</span>
-                  </div>
-                ))}
+              <div className="space-y-3 mb-4">
+                {items.map(item => {
+                  const eligible = isItemEligible(item);
+                  const toggled = !!redeemToggleMap[item.product.id];
+                  const r = redemptionPerItem[item.product.id];
+                  return (
+                    <div key={item.product.id} className="text-sm">
+                      <div className="flex justify-between text-[#5f7a60]">
+                        <span>{item.product.name} × {item.quantity}</span>
+                        <span className="font-semibold">₹{(Number(item.product.price) * item.quantity).toFixed(2)}</span>
+                      </div>
+                      {eligible && (
+                        <div className="flex items-center justify-between mt-1">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <span className="text-[11px] font-bold text-[#2d4a30] flex items-center gap-1">
+                              <GCoinIcon size={14} /> Redeem Coins
+                            </span>
+                            <input
+                              type="checkbox"
+                              checked={toggled}
+                              onChange={(e) => setRedeemToggle(item.product.id, e.target.checked)}
+                              className="sr-only peer"
+                            />
+                            <div className="w-9 h-5 bg-gray-200 peer-checked:bg-[#2e7d32] rounded-full relative transition-colors">
+                              <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${toggled ? 'translate-x-4' : ''}`} />
+                            </div>
+                            <span className="text-[10px] text-[#5f7a60]">
+                              {item.product.redeem_discount_percent}% off · {item.product.redeem_coins_required} G/unit
+                            </span>
+                          </label>
+                          {toggled && r && r.unitsRedeemed > 0 && (
+                            <span className="text-[11px] text-green-700 font-bold">
+                              {r.unitsRedeemed}/{item.quantity} · −{r.coinsUsed} G · −₹{r.discountAmount.toFixed(2)}
+                            </span>
+                          )}
+                          {toggled && r && r.unitsRedeemed === 0 && (
+                            <span className="text-[11px] text-amber-700">Not enough G Coins</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
               <div className="border-t border-[rgba(46,125,50,0.1)] pt-3 flex justify-between">
                 <span className="text-[#5f7a60] font-semibold">Subtotal</span>
@@ -418,7 +459,7 @@ export default function Checkout() {
             </div>
 
             {/* Points Redemption (shared with Cart page) */}
-            <RedeemPanel pointToRs={pointToRs} />
+            <RedeemPanel />
 
             {/* Total */}
             <div className="glass-panel p-6">

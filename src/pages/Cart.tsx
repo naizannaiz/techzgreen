@@ -1,21 +1,17 @@
-import { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import { Trash2, ShoppingBag, ArrowRight, Minus, Plus } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 import RedeemPanel from '../components/RedeemPanel';
+import { computeCartRedemption, isItemEligible } from '../lib/redeemCap';
+import { GCoinIcon } from '../components/GCoin';
 
 export default function Cart() {
-  const { items, updateQuantity, removeFromCart, totalAmount, totalPointsToRedeem } = useCart();
-  const [pointToRs, setPointToRs] = useState(1);
+  const { items, updateQuantity, removeFromCart, totalAmount, redeemToggleMap, setRedeemToggle } = useCart();
+  const { totalPoints } = useAuth();
 
-  useEffect(() => {
-    supabase.from('app_settings').select('value').eq('key', 'point_to_rs').single()
-      .then(({ data }) => { if (data) setPointToRs(parseFloat(data.value)); });
-  }, []);
-
-  const discountAmount = totalPointsToRedeem * pointToRs;
+  const { totalDiscount: discountAmount, perItem } = computeCartRedemption(items, totalPoints, redeemToggleMap);
   const finalAmount = Math.max(0, totalAmount - discountAmount);
 
   if (items.length === 0) {
@@ -57,7 +53,12 @@ export default function Cart() {
 
         {/* Left: Item list + redeem panel */}
         <div className="flex-grow space-y-3 sm:min-w-0">
-          {items.map(({ product, quantity }) => (
+          {items.map(({ product, quantity }) => {
+            const eligible = isItemEligible({ product, quantity });
+            const r = perItem[product.id];
+            const toggled = !!redeemToggleMap[product.id];
+            const insufficient = eligible && toggled && r && r.unitsRedeemed < quantity;
+            return (
             <div key={product.id} className="glass-card p-3 sm:p-4 flex gap-3 sm:gap-4 items-center">
               <img
                 src={product.image_url}
@@ -69,9 +70,9 @@ export default function Cart() {
                 <p className="font-black text-[#2e7d32] text-base sm:text-lg mt-0.5" style={{ fontFamily: 'Outfit, sans-serif' }}>
                   ₹{Number(product.price).toFixed(0)}
                 </p>
-                {product.max_redeemable_points != null && (
+                {(product.redeem_discount_percent ?? 0) > 0 && (product.redeem_coins_required ?? 0) > 0 && (
                   <p className="text-[11px] text-amber-700 mt-0.5">
-                    Max {product.max_redeemable_points} G Coins redeemable / unit
+                    {product.redeem_discount_percent}% off for {product.redeem_coins_required} G Coins / unit
                   </p>
                 )}
                 <div className="flex items-center gap-2 mt-2">
@@ -86,6 +87,22 @@ export default function Cart() {
                       <Plus className="w-3.5 h-3.5" />
                     </button>
                   </div>
+                  {eligible && (
+                    <label className="flex items-center gap-1.5 cursor-pointer" title={`Redeem ${product.redeem_coins_required} G/unit for ${product.redeem_discount_percent}% off`}>
+                      <span className="text-[11px] font-bold text-[#2d4a30] flex items-center gap-1">
+                        <GCoinIcon size={14} /> Redeem Coins
+                      </span>
+                      <input
+                        type="checkbox"
+                        checked={toggled}
+                        onChange={(e) => setRedeemToggle(product.id, e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-9 h-5 bg-gray-200 peer-checked:bg-[#2e7d32] rounded-full relative transition-colors">
+                        <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${toggled ? 'translate-x-4' : ''}`} />
+                      </div>
+                    </label>
+                  )}
                   <span className="ml-auto text-xs sm:text-sm font-bold text-[#5f7a60]">
                     ₹{(Number(product.price) * quantity).toFixed(0)}
                   </span>
@@ -93,11 +110,20 @@ export default function Cart() {
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
+                {eligible && toggled && r && r.unitsRedeemed > 0 && (
+                  <p className="text-[11px] text-green-700 font-bold mt-1">
+                    Redeem {r.unitsRedeemed}/{quantity} unit{r.unitsRedeemed !== 1 ? 's' : ''} · −{r.coinsUsed} G · −₹{r.discountAmount.toFixed(2)}
+                    {insufficient && ' (balance limit)'}
+                  </p>
+                )}
+                {eligible && toggled && r && r.unitsRedeemed === 0 && (
+                  <p className="text-[11px] text-amber-700 mt-1">Not enough G Coins.</p>
+                )}
               </div>
             </div>
-          ))}
+          );})}
 
-          <RedeemPanel pointToRs={pointToRs} />
+          <RedeemPanel />
         </div>
 
         {/* Right: Order Summary — desktop sidebar, mobile hidden (uses sticky bar) */}

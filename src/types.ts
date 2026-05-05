@@ -13,7 +13,9 @@ export interface Product {
   price: number;
   image_url: string;  // matches Supabase column name
   stock: number;
-  max_redeemable_points: number | null;
+  redeem_discount_percent: number | null;
+  redeem_coins_required: number | null;
+  max_redeemable_points?: number | null;
 }
 
 export interface Event {

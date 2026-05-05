@@ -192,11 +192,12 @@ export default function AdminDashboard() {
   const [addingProduct, setAddingProduct] = useState(false);
   const [productImageFile, setProductImageFile] = useState<File | null>(null);
   const [productImagePreview, setProductImagePreview] = useState<string | null>(null);
-  const [productForm, setProductForm] = useState({ name: '', description: '', price: '', stock: '', max_redeemable_points: '' });
+  const [productForm, setProductForm] = useState({ name: '', description: '', price: '', stock: '', redeem_discount_percent: '', redeem_coins_required: '' });
   const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [editProductDesc, setEditProductDesc] = useState('');
-  const [editProductCap, setEditProductCap] = useState('');
+  const [editProductPct, setEditProductPct] = useState('');
+  const [editProductCoins, setEditProductCoins] = useState('');
   const [savingProductDesc, setSavingProductDesc] = useState(false);
   const productFileRef = useRef<HTMLInputElement>(null);
 
@@ -218,9 +219,6 @@ export default function AdminDashboard() {
   const [eventRegistrations, setEventRegistrations] = useState<any[]>([]);
   const eventFileRef = useRef<HTMLInputElement>(null);
 
-  // ── Settings ──
-  const [pointToRs, setPointToRs] = useState('1');
-  const [savingSettings, setSavingSettings] = useState(false);
 
   // ── Orders ──
   const [orders, setOrders] = useState<any[]>([]);
@@ -264,7 +262,6 @@ export default function AdminDashboard() {
       case 'orders': fetchOrders(); break;
       case 'vouchers': fetchVouchers(); break;
       case 'partner_merch': fetchPartnerProducts(); fetchEvents(); break;
-      case 'settings': fetchSettings(); break;
     }
   }, [activeTab, profileRole]);
 
@@ -318,9 +315,10 @@ export default function AdminDashboard() {
         price: parseFloat(productForm.price),
         stock: parseInt(productForm.stock || '0', 10),
         image_url: imageUrl,
-        max_redeemable_points: productForm.max_redeemable_points === '' ? null : parseInt(productForm.max_redeemable_points, 10),
+        redeem_discount_percent: productForm.redeem_discount_percent === '' ? null : parseFloat(productForm.redeem_discount_percent),
+        redeem_coins_required: productForm.redeem_coins_required === '' ? null : parseInt(productForm.redeem_coins_required, 10),
       });
-      setProductForm({ name: '', description: '', price: '', stock: '', max_redeemable_points: '' });
+      setProductForm({ name: '', description: '', price: '', stock: '', redeem_discount_percent: '', redeem_coins_required: '' });
       setProductImageFile(null); setProductImagePreview(null);
       if (productFileRef.current) productFileRef.current.value = '';
       fetchProducts();
@@ -336,9 +334,10 @@ export default function AdminDashboard() {
   const handleSaveProductDesc = async (id: string) => {
     setSavingProductDesc(true);
     try {
-      const capValue = editProductCap === '' ? null : parseInt(editProductCap, 10);
-      await supabase.from('products').update({ description: editProductDesc, max_redeemable_points: capValue }).eq('id', id);
-      setProducts(prev => prev.map(p => p.id === id ? { ...p, description: editProductDesc, max_redeemable_points: capValue } : p));
+      const pctValue = editProductPct === '' ? null : parseFloat(editProductPct);
+      const coinsValue = editProductCoins === '' ? null : parseInt(editProductCoins, 10);
+      await supabase.from('products').update({ description: editProductDesc, redeem_discount_percent: pctValue, redeem_coins_required: coinsValue }).eq('id', id);
+      setProducts(prev => prev.map(p => p.id === id ? { ...p, description: editProductDesc, redeem_discount_percent: pctValue, redeem_coins_required: coinsValue } : p));
       setEditingProductId(null);
     } catch (e: any) { alert(e.message); } finally { setSavingProductDesc(false); }
   };
@@ -404,17 +403,6 @@ export default function AdminDashboard() {
     if (data) setEventRegistrations(data);
   };
 
-  // ─── Settings ───
-  const fetchSettings = async () => {
-    const { data } = await supabase.from('app_settings').select('value').eq('key', 'point_to_rs').single();
-    if (data) setPointToRs(data.value);
-  };
-  const saveSettings = async () => {
-    setSavingSettings(true);
-    await supabase.from('app_settings').upsert({ key: 'point_to_rs', value: pointToRs, updated_at: new Date().toISOString() });
-    setSavingSettings(false);
-    alert('Settings saved!');
-  };
 
   // ─── Orders ───
   const fetchOrders = async () => {
@@ -642,11 +630,17 @@ export default function AdminDashboard() {
                     <input type="number" min="0" value={productForm.stock} onChange={e => setProductForm(f => ({ ...f, stock: e.target.value }))} placeholder="0" className="input-glass" />
                   </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-bold text-[#2d4a30] mb-1.5">Max Redeemable G Coins / unit</label>
-                  <input type="number" min="0" value={productForm.max_redeemable_points} onChange={e => setProductForm(f => ({ ...f, max_redeemable_points: e.target.value }))} placeholder="Blank = unlimited, 0 = none" className="input-glass" />
-                  <p className="text-[11px] text-[#5f7a60] mt-1">Caps how many G Coins customers can redeem per unit of this product.</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-bold text-[#2d4a30] mb-1.5">Discount % on Redeem</label>
+                    <input type="number" min="0" max="100" step="0.01" value={productForm.redeem_discount_percent} onChange={e => setProductForm(f => ({ ...f, redeem_discount_percent: e.target.value }))} placeholder="e.g. 50" className="input-glass" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-[#2d4a30] mb-1.5">G Coins Required / unit</label>
+                    <input type="number" min="0" value={productForm.redeem_coins_required} onChange={e => setProductForm(f => ({ ...f, redeem_coins_required: e.target.value }))} placeholder="e.g. 10" className="input-glass" />
+                  </div>
                 </div>
+                <p className="text-[11px] text-[#5f7a60] -mt-2">Leave both blank to disable redemption for this product.</p>
                 <button type="submit" disabled={addingProduct} className="btn-primary w-full flex items-center justify-center gap-2 !py-3 disabled:opacity-50">{addingProduct ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Adding...</> : <><Plus className="w-4 h-4" /> Add to Catalog</>}</button>
               </form>
             </div>
@@ -670,15 +664,27 @@ export default function AdminDashboard() {
                             placeholder="Description"
                             autoFocus
                           />
-                          <div className="flex gap-2 items-center">
+                          <div className="grid grid-cols-2 gap-2">
                             <input
                               type="number"
                               min="0"
-                              value={editProductCap}
-                              onChange={e => setEditProductCap(e.target.value)}
-                              placeholder="Max G Coins / unit (blank = unlimited)"
-                              className="input-glass text-xs flex-grow"
+                              max="100"
+                              step="0.01"
+                              value={editProductPct}
+                              onChange={e => setEditProductPct(e.target.value)}
+                              placeholder="Discount % (blank = none)"
+                              className="input-glass text-xs"
                             />
+                            <input
+                              type="number"
+                              min="0"
+                              value={editProductCoins}
+                              onChange={e => setEditProductCoins(e.target.value)}
+                              placeholder="G Coins / unit"
+                              className="input-glass text-xs"
+                            />
+                          </div>
+                          <div className="flex gap-2 items-center justify-end">
                             <button onClick={() => handleSaveProductDesc(p.id)} disabled={savingProductDesc} className="p-1.5 text-[#2e7d32] hover:bg-[rgba(46,125,50,0.1)] rounded-lg transition-colors cursor-pointer disabled:opacity-50">
                               {savingProductDesc ? <div className="w-4 h-4 border-2 border-[#2e7d32] border-t-transparent rounded-full animate-spin" /> : <Check className="w-4 h-4" />}
                             </button>
@@ -688,14 +694,16 @@ export default function AdminDashboard() {
                       ) : (
                         <div className="flex items-center gap-1 mt-0.5">
                           <p className="text-xs text-[#5f7a60] line-clamp-1 flex-grow">{p.description}</p>
-                          <button onClick={() => { setEditingProductId(p.id); setEditProductDesc(p.description || ''); setEditProductCap(p.max_redeemable_points == null ? '' : String(p.max_redeemable_points)); }} className="flex-shrink-0 p-1 text-[#5f7a60] hover:text-[#2e7d32] hover:bg-[rgba(46,125,50,0.08)] rounded-lg transition-colors cursor-pointer" title="Edit product"><Pencil className="w-3 h-3" /></button>
+                          <button onClick={() => { setEditingProductId(p.id); setEditProductDesc(p.description || ''); setEditProductPct(p.redeem_discount_percent == null ? '' : String(p.redeem_discount_percent)); setEditProductCoins(p.redeem_coins_required == null ? '' : String(p.redeem_coins_required)); }} className="flex-shrink-0 p-1 text-[#5f7a60] hover:text-[#2e7d32] hover:bg-[rgba(46,125,50,0.08)] rounded-lg transition-colors cursor-pointer" title="Edit product"><Pencil className="w-3 h-3" /></button>
                         </div>
                       )}
                       <div className="flex items-center gap-3 mt-1.5 flex-wrap">
                         <span className="font-black text-[#2e7d32]" style={{ fontFamily: 'Outfit,sans-serif' }}>${Number(p.price).toFixed(2)}</span>
                         <span className="text-xs text-[#5f7a60] bg-[rgba(46,125,50,0.08)] border border-[rgba(46,125,50,0.15)] px-2 py-0.5 rounded-lg">Stock: {p.stock}</span>
                         <span className="text-xs text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-lg">
-                          Max redeem: {p.max_redeemable_points == null ? '∞' : `${p.max_redeemable_points} G`}
+                          {(p.redeem_discount_percent ?? 0) > 0 && (p.redeem_coins_required ?? 0) > 0
+                            ? `${p.redeem_discount_percent}% off · ${p.redeem_coins_required} G/unit`
+                            : 'No redemption'}
                         </span>
                       </div>
                     </div>
@@ -1023,31 +1031,7 @@ export default function AdminDashboard() {
         <div className="max-w-lg">
           <div className="glass-panel p-8">
             <h2 className="text-2xl font-bold text-[#1a3d1f] mb-2 flex items-center gap-2"><Settings className="w-6 h-6 text-[#2e7d32]" /> Platform Settings</h2>
-            <p className="text-[#5f7a60] text-sm mb-8">Configure platform-wide settings that affect all users.</p>
-            <div className="space-y-6">
-              <div className="glass-card p-6 !rounded-2xl">
-                <h3 className="font-bold text-[#1a3d1f] mb-1">Points Redemption Rate</h3>
-                <p className="text-xs text-[#5f7a60] mb-4">Set how much 1 reward point is worth in rupees (₹) when used at checkout.</p>
-                <label className="block text-sm font-bold text-[#2d4a30] mb-1.5">1 Point = ₹</label>
-                <div className="flex gap-3 items-center">
-                  <input
-                    type="number"
-                    min="0.01"
-                    step="0.01"
-                    value={pointToRs}
-                    onChange={e => setPointToRs(e.target.value)}
-                    className="input-glass max-w-[140px]"
-                  />
-                  <span className="text-[#5f7a60] text-sm">rupees per point</span>
-                </div>
-                <p className="text-xs text-[#5f7a60] mt-2 bg-[rgba(46,125,50,0.06)] border border-[rgba(46,125,50,0.12)] px-3 py-2 rounded-lg">
-                  Example: If rate = ₹2, then 10 points = ₹20 discount at checkout.
-                </p>
-              </div>
-              <button onClick={saveSettings} disabled={savingSettings} className="btn-primary flex items-center gap-2 !py-3 !px-8 disabled:opacity-50">
-                {savingSettings ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Saving...</> : <><CheckCircle2 className="w-4 h-4" /> Save Settings</>}
-              </button>
-            </div>
+            <p className="text-[#5f7a60] text-sm">Redemption is now configured per product (Discount % + G Coins required) on the Products tab.</p>
           </div>
         </div>
       )}
