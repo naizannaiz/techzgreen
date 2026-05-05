@@ -192,10 +192,11 @@ export default function AdminDashboard() {
   const [addingProduct, setAddingProduct] = useState(false);
   const [productImageFile, setProductImageFile] = useState<File | null>(null);
   const [productImagePreview, setProductImagePreview] = useState<string | null>(null);
-  const [productForm, setProductForm] = useState({ name: '', description: '', price: '', stock: '' });
+  const [productForm, setProductForm] = useState({ name: '', description: '', price: '', stock: '', max_redeemable_points: '' });
   const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [editProductDesc, setEditProductDesc] = useState('');
+  const [editProductCap, setEditProductCap] = useState('');
   const [savingProductDesc, setSavingProductDesc] = useState(false);
   const productFileRef = useRef<HTMLInputElement>(null);
 
@@ -311,8 +312,15 @@ export default function AdminDashboard() {
     try {
       let imageUrl = '';
       if (productImageFile) imageUrl = await uploadImage(productImageFile, 'waste-images', 'products/');
-      await supabase.from('products').insert({ name: productForm.name, description: productForm.description, price: parseFloat(productForm.price), stock: parseInt(productForm.stock || '0', 10), image_url: imageUrl });
-      setProductForm({ name: '', description: '', price: '', stock: '' });
+      await supabase.from('products').insert({
+        name: productForm.name,
+        description: productForm.description,
+        price: parseFloat(productForm.price),
+        stock: parseInt(productForm.stock || '0', 10),
+        image_url: imageUrl,
+        max_redeemable_points: productForm.max_redeemable_points === '' ? null : parseInt(productForm.max_redeemable_points, 10),
+      });
+      setProductForm({ name: '', description: '', price: '', stock: '', max_redeemable_points: '' });
       setProductImageFile(null); setProductImagePreview(null);
       if (productFileRef.current) productFileRef.current.value = '';
       fetchProducts();
@@ -328,8 +336,9 @@ export default function AdminDashboard() {
   const handleSaveProductDesc = async (id: string) => {
     setSavingProductDesc(true);
     try {
-      await supabase.from('products').update({ description: editProductDesc }).eq('id', id);
-      setProducts(prev => prev.map(p => p.id === id ? { ...p, description: editProductDesc } : p));
+      const capValue = editProductCap === '' ? null : parseInt(editProductCap, 10);
+      await supabase.from('products').update({ description: editProductDesc, max_redeemable_points: capValue }).eq('id', id);
+      setProducts(prev => prev.map(p => p.id === id ? { ...p, description: editProductDesc, max_redeemable_points: capValue } : p));
       setEditingProductId(null);
     } catch (e: any) { alert(e.message); } finally { setSavingProductDesc(false); }
   };
@@ -633,6 +642,11 @@ export default function AdminDashboard() {
                     <input type="number" min="0" value={productForm.stock} onChange={e => setProductForm(f => ({ ...f, stock: e.target.value }))} placeholder="0" className="input-glass" />
                   </div>
                 </div>
+                <div>
+                  <label className="block text-sm font-bold text-[#2d4a30] mb-1.5">Max Redeemable G Coins / unit</label>
+                  <input type="number" min="0" value={productForm.max_redeemable_points} onChange={e => setProductForm(f => ({ ...f, max_redeemable_points: e.target.value }))} placeholder="Blank = unlimited, 0 = none" className="input-glass" />
+                  <p className="text-[11px] text-[#5f7a60] mt-1">Caps how many G Coins customers can redeem per unit of this product.</p>
+                </div>
                 <button type="submit" disabled={addingProduct} className="btn-primary w-full flex items-center justify-center gap-2 !py-3 disabled:opacity-50">{addingProduct ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Adding...</> : <><Plus className="w-4 h-4" /> Add to Catalog</>}</button>
               </form>
             </div>
@@ -647,15 +661,24 @@ export default function AdminDashboard() {
                     <div className="flex-grow min-w-0">
                       <h3 className="font-bold text-[#1a3d1f] truncate">{p.name}</h3>
                       {editingProductId === p.id ? (
-                        <div className="mt-1 flex gap-2 items-start">
+                        <div className="mt-1 space-y-2">
                           <textarea
                             rows={2}
                             value={editProductDesc}
                             onChange={e => setEditProductDesc(e.target.value)}
-                            className="input-glass text-xs resize-none flex-grow"
+                            className="input-glass text-xs resize-none w-full"
+                            placeholder="Description"
                             autoFocus
                           />
-                          <div className="flex gap-1 flex-shrink-0">
+                          <div className="flex gap-2 items-center">
+                            <input
+                              type="number"
+                              min="0"
+                              value={editProductCap}
+                              onChange={e => setEditProductCap(e.target.value)}
+                              placeholder="Max G Coins / unit (blank = unlimited)"
+                              className="input-glass text-xs flex-grow"
+                            />
                             <button onClick={() => handleSaveProductDesc(p.id)} disabled={savingProductDesc} className="p-1.5 text-[#2e7d32] hover:bg-[rgba(46,125,50,0.1)] rounded-lg transition-colors cursor-pointer disabled:opacity-50">
                               {savingProductDesc ? <div className="w-4 h-4 border-2 border-[#2e7d32] border-t-transparent rounded-full animate-spin" /> : <Check className="w-4 h-4" />}
                             </button>
@@ -665,12 +688,15 @@ export default function AdminDashboard() {
                       ) : (
                         <div className="flex items-center gap-1 mt-0.5">
                           <p className="text-xs text-[#5f7a60] line-clamp-1 flex-grow">{p.description}</p>
-                          <button onClick={() => { setEditingProductId(p.id); setEditProductDesc(p.description || ''); }} className="flex-shrink-0 p-1 text-[#5f7a60] hover:text-[#2e7d32] hover:bg-[rgba(46,125,50,0.08)] rounded-lg transition-colors cursor-pointer" title="Edit description"><Pencil className="w-3 h-3" /></button>
+                          <button onClick={() => { setEditingProductId(p.id); setEditProductDesc(p.description || ''); setEditProductCap(p.max_redeemable_points == null ? '' : String(p.max_redeemable_points)); }} className="flex-shrink-0 p-1 text-[#5f7a60] hover:text-[#2e7d32] hover:bg-[rgba(46,125,50,0.08)] rounded-lg transition-colors cursor-pointer" title="Edit product"><Pencil className="w-3 h-3" /></button>
                         </div>
                       )}
-                      <div className="flex items-center gap-3 mt-1.5">
+                      <div className="flex items-center gap-3 mt-1.5 flex-wrap">
                         <span className="font-black text-[#2e7d32]" style={{ fontFamily: 'Outfit,sans-serif' }}>${Number(p.price).toFixed(2)}</span>
                         <span className="text-xs text-[#5f7a60] bg-[rgba(46,125,50,0.08)] border border-[rgba(46,125,50,0.15)] px-2 py-0.5 rounded-lg">Stock: {p.stock}</span>
+                        <span className="text-xs text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-lg">
+                          Max redeem: {p.max_redeemable_points == null ? '∞' : `${p.max_redeemable_points} G`}
+                        </span>
                       </div>
                     </div>
                     <button onClick={() => handleDeleteProduct(p.id)} className="flex-shrink-0 p-2.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-xl transition-colors cursor-pointer"><Trash2 className="w-5 h-5" /></button>

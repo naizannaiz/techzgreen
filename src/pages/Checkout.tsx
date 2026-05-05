@@ -4,8 +4,9 @@ import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
-import { MapPin, CheckCircle, Sparkles, ChevronDown, ChevronUp, Plus, Check } from 'lucide-react';
+import { MapPin, CheckCircle, Plus, Check } from 'lucide-react';
 import { GCoinIcon } from '../components/GCoin';
+import RedeemPanel from '../components/RedeemPanel';
 
 interface SavedAddress {
   id: string;
@@ -19,8 +20,8 @@ interface SavedAddress {
 const EMPTY_FORM = { fullname: '', street: '', city: '', state: '', zip_code: '' };
 
 export default function Checkout() {
-  const { items, totalAmount, clearCart } = useCart();
-  const { user, totalPoints, refreshPoints } = useAuth();
+  const { items, totalAmount, clearCart, totalPointsToRedeem } = useCart();
+  const { user, refreshPoints } = useAuth();
   const navigate = useNavigate();
 
   const [step, setStep] = useState<1 | 2>(1);
@@ -35,10 +36,8 @@ export default function Checkout() {
 
   const [loading, setLoading] = useState(false);
 
-  // Points
+  // Points (usePoints + pointsToRedeem live in CartContext for cart→checkout sharing)
   const [pointToRs, setPointToRs] = useState(1);
-  const [usePoints, setUsePoints] = useState(false);
-  const [pointsToRedeem, setPointsToRedeem] = useState(0);
 
   useEffect(() => {
     if (items.length === 0) navigate('/shop');
@@ -68,8 +67,7 @@ export default function Checkout() {
     }
   }, [user]);
 
-  const maxPointsDiscount = Math.min(totalPoints, Math.floor(totalAmount / pointToRs));
-  const discountAmount = usePoints ? pointsToRedeem * pointToRs : 0;
+  const discountAmount = totalPointsToRedeem * pointToRs;
   const finalAmount = Math.max(0, totalAmount - discountAmount);
 
   // Save new address to DB and select it
@@ -107,16 +105,71 @@ export default function Checkout() {
       document.body.appendChild(script);
     });
 
+  // Step 1: insert pending order + items into DB. Returns the row, or null on error.
+  const createPendingOrder = async (addressId: string) => {
+    if (!user) return null;
+    const { data: orderData, error: orderError } = await supabase
+      .from('orders')
+      .insert({
+        user_id: user.id,
+        address_id: addressId,
+        total_amount: finalAmount,
+        status: finalAmount <= 0 ? 'paid' : 'pending',
+        points_used: totalPointsToRedeem,
+        points_discount_amount: discountAmount,
+      })
+      .select()
+      .single();
+    if (orderError || !orderData) {
+      console.error('Order Insert Error:', orderError);
+      alert('Failed to create order. Please try again.');
+      return null;
+    }
+    const { error: itemsError } = await supabase.from('order_items').insert(
+      items.map(item => ({
+        order_id: orderData.id,
+        product_id: (item.product as any).isPartnerProduct ? null : item.product.id,
+        partner_product_id: (item.product as any).isPartnerProduct ? item.product.id : null,
+        quantity: item.quantity,
+        price_at_time: item.product.price,
+      }))
+    );
+    if (itemsError) console.error('Items Insert Error:', itemsError);
+    return orderData;
+  };
+
+  // Free orders + post-payment success: decrement stock, refresh points, clear cart, nav.
+  const completeOrder = async (orderId: string, status: 'paid' | 'pending' | 'failed') => {
+    if (status === 'paid') {
+      await Promise.all(items.map(async item => {
+        const table = (item.product as any).isPartnerProduct ? 'partner_products' : 'products';
+        await supabase.rpc('decrement_stock', { row_id: item.product.id, qty: item.quantity, tbl: table });
+      }));
+      await refreshPoints();
+    }
+    clearCart();
+    navigate(`/order-confirmation/${orderId}?status=${status}`);
+  };
+
   const handlePaymentSubmit = async () => {
     if (!user || !selectedAddressId) return;
     setLoading(true);
 
     try {
-      // Use existing saved address ID — no new insert
       const addressId = selectedAddressId;
+      const order = await createPendingOrder(addressId);
+      if (!order) { setLoading(false); return; }
 
+      // Free order — already marked paid in createPendingOrder; skip Razorpay.
       if (finalAmount <= 0) {
-        await finalizeOrder(addressId, null, null, null);
+        if (totalPointsToRedeem > 0) {
+          await supabase.from('points_ledger').insert({
+            user_id: user.id,
+            points_change: -totalPointsToRedeem,
+            description: `Redeemed ${totalPointsToRedeem} G Coins on Order #${order.id.substring(0, 8).toUpperCase()}`,
+          });
+        }
+        await completeOrder(order.id, 'paid');
         return;
       }
 
@@ -127,11 +180,25 @@ export default function Checkout() {
       const orderResponse = await fetch(`${backendUrl}/api/create-order`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: finalAmount, currency: 'INR', receipt: `rcpt_${user.id.substring(0, 8)}_${Date.now().toString().slice(-6)}` })
+        body: JSON.stringify({
+          amount: finalAmount,
+          currency: 'INR',
+          receipt: `rcpt_${user.id.substring(0, 8)}_${Date.now().toString().slice(-6)}`,
+          order_id: order.id,
+          items: items.map(it => ({
+            product_id: it.product.id,
+            quantity: it.quantity,
+            isPartner: !!(it.product as any).isPartnerProduct,
+          })),
+        }),
       });
       const orderData = await orderResponse.json();
 
-      if (!orderData || !orderData.id) { alert('Server error. Please try again.'); setLoading(false); return; }
+      if (!orderData || !orderData.id) {
+        alert(orderData?.error || 'Server error. Please try again.');
+        setLoading(false);
+        return;
+      }
 
       const selectedAddr = savedAddresses.find(a => a.id === addressId);
 
@@ -150,92 +217,50 @@ export default function Checkout() {
               body: JSON.stringify({
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature
-              })
+                razorpay_signature: response.razorpay_signature,
+                order_id: order.id,
+              }),
             });
             const verifyData = await verifyResponse.json();
             if (verifyData.verified) {
-              await finalizeOrder(addressId, response.razorpay_order_id, response.razorpay_payment_id, response.razorpay_signature);
+              await completeOrder(order.id, 'paid');
             } else {
-              alert('Payment verification failed!');
+              await completeOrder(order.id, 'failed');
             }
           } catch (err) {
             console.error('Verification error:', err);
-            alert('Payment verification error.');
+            await completeOrder(order.id, 'failed');
           }
+        },
+        modal: {
+          ondismiss: () => {
+            // User closed Razorpay without paying. Order stays 'pending' — they can retry from confirmation page.
+            completeOrder(order.id, 'pending');
+          },
+          escape: true,
         },
         prefill: {
           name: selectedAddr?.fullname || '',
           email: user.email,
         },
-        theme: { color: '#2e7d32' }
+        theme: { color: '#2e7d32' },
       };
 
       const paymentObject = new (window as any).Razorpay(options);
+      paymentObject.on('payment.failed', async (resp: any) => {
+        console.warn('payment.failed:', resp?.error);
+        await supabase.from('orders').update({
+          status: 'failed',
+          last_payment_error: resp?.error?.description || 'payment_failed',
+        }).eq('id', order.id);
+        await completeOrder(order.id, 'failed');
+      });
       paymentObject.open();
       setLoading(false);
 
     } catch (error) {
       console.error('Payment flow failed:', error);
       alert('Failed to process. Please try again.');
-      setLoading(false);
-    }
-  };
-
-  const finalizeOrder = async (addressId: string, rzp_order_id: string | null, rzp_payment_id: string | null, rzp_signature: string | null) => {
-    if (!user) return;
-    try {
-      setLoading(true);
-      const { data: orderData, error: orderError } = await supabase
-        .from('orders')
-        .insert({
-          user_id: user.id,
-          address_id: addressId,
-          total_amount: finalAmount,
-          status: 'paid',
-          points_used: usePoints ? pointsToRedeem : 0,
-          points_discount_amount: discountAmount,
-          razorpay_order_id: rzp_order_id,
-          razorpay_payment_id: rzp_payment_id,
-          razorpay_signature: rzp_signature
-        })
-        .select()
-        .single();
-
-      if (orderError) { console.error('Order Insert Error:', orderError); throw orderError; }
-
-      const { error: itemsError } = await supabase
-        .from('order_items')
-        .insert(items.map(item => ({
-          order_id: orderData.id,
-          product_id: (item.product as any).isPartnerProduct ? null : item.product.id,
-          partner_product_id: (item.product as any).isPartnerProduct ? item.product.id : null,
-          quantity: item.quantity,
-          price_at_time: item.product.price,
-        })));
-
-      if (itemsError) { console.error('Items Insert Error:', itemsError); throw itemsError; }
-
-      await Promise.all(items.map(async item => {
-        const table = (item.product as any).isPartnerProduct ? 'partner_products' : 'products';
-        await supabase.rpc('decrement_stock', { row_id: item.product.id, qty: item.quantity, tbl: table });
-      }));
-
-      if (usePoints && pointsToRedeem > 0) {
-        await supabase.from('points_ledger').insert({
-          user_id: user.id,
-          points_change: -pointsToRedeem,
-          description: `Redeemed ${pointsToRedeem} pts for ₹${discountAmount.toFixed(2)} discount on Order #${orderData.id.substring(0, 8).toUpperCase()}`,
-        });
-        await refreshPoints();
-      }
-
-      clearCart();
-      navigate(`/order-confirmation/${orderData.id}`);
-    } catch (error) {
-      console.error('Finalizing order failed:', error);
-      alert('Order placed but failed to update status. Please contact support.');
-    } finally {
       setLoading(false);
     }
   };
@@ -392,50 +417,8 @@ export default function Checkout() {
               </div>
             </div>
 
-            {/* Points Redemption */}
-            {totalPoints > 0 && (
-              <div className="glass-panel p-6">
-                <button
-                  onClick={() => { setUsePoints(!usePoints); if (usePoints) setPointsToRedeem(0); }}
-                  className="w-full flex items-center justify-between cursor-pointer"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="bg-amber-50 border border-amber-200 p-2 rounded-xl">
-                      <GCoinIcon size={28} />
-                    </div>
-                    <div className="text-left">
-                      <p className="font-bold text-[#1a3d1f] text-sm">Redeem G Coins</p>
-                      <p className="text-xs text-[#5f7a60]">You have <strong>{totalPoints} G Coins</strong> · 1 G Coin = ₹{pointToRs.toFixed(2)}</p>
-                    </div>
-                  </div>
-                  {usePoints ? <ChevronUp className="w-4 h-4 text-[#5f7a60]" /> : <ChevronDown className="w-4 h-4 text-[#5f7a60]" />}
-                </button>
-
-                {usePoints && (
-                  <div className="mt-4 space-y-3">
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="range" min={0} max={maxPointsDiscount} value={pointsToRedeem}
-                        onChange={e => setPointsToRedeem(parseInt(e.target.value))}
-                        className="flex-grow accent-[#2e7d32]"
-                      />
-                      <span className="font-black text-[#2e7d32] text-sm w-24 text-right">{pointsToRedeem} G Coins</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-[#5f7a60]">Discount Applied</span>
-                      <span className="font-bold text-green-700 flex items-center gap-1">
-                        <Sparkles className="w-3.5 h-3.5" /> −₹{discountAmount.toFixed(2)}
-                      </span>
-                    </div>
-                    <div className="flex gap-2">
-                      <button onClick={() => setPointsToRedeem(0)} className="text-xs text-[#5f7a60] hover:text-[#2e7d32] cursor-pointer">Use 0</button>
-                      <span className="text-[#5f7a60]">·</span>
-                      <button onClick={() => setPointsToRedeem(maxPointsDiscount)} className="text-xs text-[#5f7a60] hover:text-[#2e7d32] cursor-pointer font-bold">Use Max ({maxPointsDiscount} G Coins)</button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
+            {/* Points Redemption (shared with Cart page) */}
+            <RedeemPanel pointToRs={pointToRs} />
 
             {/* Total */}
             <div className="glass-panel p-6">

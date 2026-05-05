@@ -13,12 +13,19 @@ interface CartContextType {
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
   totalAmount: number;
+  redeemMap: Record<string, number>;
+  setRedeemForItem: (productId: string, n: number) => void;
+  totalPointsToRedeem: number;
+  usePoints: boolean;
+  setUsePoints: (b: boolean) => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   const [items, setItems] = useState<CartItem[]>([]);
+  const [redeemMap, setRedeemMap] = useState<Record<string, number>>({});
+  const [usePoints, setUsePoints] = useState(false);
 
   const addToCart = (product: Product) => {
     setItems((prev) => {
@@ -36,6 +43,10 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
 
   const removeFromCart = (productId: string) => {
     setItems((prev) => prev.filter((item) => item.product.id !== productId));
+    setRedeemMap((prev) => {
+      const { [productId]: _, ...rest } = prev;
+      return rest;
+    });
   };
 
   const updateQuantity = (productId: string, quantity: number) => {
@@ -50,14 +61,24 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     );
   };
 
+  const setRedeemForItem = (productId: string, n: number) => {
+    setRedeemMap((prev) => ({ ...prev, [productId]: Math.max(0, Math.floor(n)) }));
+  };
+
   const clearCart = () => {
     setItems([]);
+    setRedeemMap({});
+    setUsePoints(false);
   };
 
   const totalAmount = items.reduce(
     (total, item) => total + item.product.price * item.quantity,
     0
   );
+
+  const totalPointsToRedeem = usePoints
+    ? items.reduce((sum, it) => sum + (redeemMap[it.product.id] || 0), 0)
+    : 0;
 
   return (
     <CartContext.Provider
@@ -68,6 +89,11 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
         updateQuantity,
         clearCart,
         totalAmount,
+        redeemMap,
+        setRedeemForItem,
+        totalPointsToRedeem,
+        usePoints,
+        setUsePoints,
       }}
     >
       {children}

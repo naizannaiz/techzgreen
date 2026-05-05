@@ -1,10 +1,22 @@
+import { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useCart } from '../context/CartContext';
 import { Link } from 'react-router-dom';
 import { Trash2, ShoppingBag, ArrowRight, Minus, Plus } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import RedeemPanel from '../components/RedeemPanel';
 
 export default function Cart() {
-  const { items, updateQuantity, removeFromCart, totalAmount } = useCart();
+  const { items, updateQuantity, removeFromCart, totalAmount, totalPointsToRedeem } = useCart();
+  const [pointToRs, setPointToRs] = useState(1);
+
+  useEffect(() => {
+    supabase.from('app_settings').select('value').eq('key', 'point_to_rs').single()
+      .then(({ data }) => { if (data) setPointToRs(parseFloat(data.value)); });
+  }, []);
+
+  const discountAmount = totalPointsToRedeem * pointToRs;
+  const finalAmount = Math.max(0, totalAmount - discountAmount);
 
   if (items.length === 0) {
     return (
@@ -43,7 +55,7 @@ export default function Cart() {
       {/* ── Desktop: 2-col, Mobile: stacked ── */}
       <div className="px-4 pt-5 max-w-5xl mx-auto sm:flex sm:gap-8 sm:items-start">
 
-        {/* Left: Item list */}
+        {/* Left: Item list + redeem panel */}
         <div className="flex-grow space-y-3 sm:min-w-0">
           {items.map(({ product, quantity }) => (
             <div key={product.id} className="glass-card p-3 sm:p-4 flex gap-3 sm:gap-4 items-center">
@@ -57,6 +69,11 @@ export default function Cart() {
                 <p className="font-black text-[#2e7d32] text-base sm:text-lg mt-0.5" style={{ fontFamily: 'Outfit, sans-serif' }}>
                   ₹{Number(product.price).toFixed(0)}
                 </p>
+                {product.max_redeemable_points != null && (
+                  <p className="text-[11px] text-amber-700 mt-0.5">
+                    Max {product.max_redeemable_points} G Coins redeemable / unit
+                  </p>
+                )}
                 <div className="flex items-center gap-2 mt-2">
                   <div className="flex items-center border border-[rgba(46,125,50,0.2)] rounded-xl overflow-hidden bg-white/60">
                     <button onClick={() => updateQuantity(product.id, quantity - 1)} className="px-3 py-1.5 text-[#2d4a30] hover:bg-[rgba(46,125,50,0.08)] transition-colors cursor-pointer">
@@ -79,6 +96,8 @@ export default function Cart() {
               </div>
             </div>
           ))}
+
+          <RedeemPanel pointToRs={pointToRs} />
         </div>
 
         {/* Right: Order Summary — desktop sidebar, mobile hidden (uses sticky bar) */}
@@ -93,11 +112,23 @@ export default function Cart() {
                 </div>
               ))}
             </div>
-            <div className="border-t border-[rgba(46,125,50,0.12)] pt-3 flex justify-between items-center">
-              <span className="font-bold text-[#2d4a30]">Subtotal</span>
-              <span className="font-black text-[#2e7d32] text-2xl" style={{ fontFamily: 'Outfit,sans-serif' }}>
-                ₹{totalAmount.toFixed(2)}
-              </span>
+            <div className="border-t border-[rgba(46,125,50,0.12)] pt-3 space-y-2">
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-[#5f7a60] font-semibold">Subtotal</span>
+                <span className="font-bold text-[#2d4a30]">₹{totalAmount.toFixed(2)}</span>
+              </div>
+              {discountAmount > 0 && (
+                <div className="flex justify-between items-center text-sm text-green-700">
+                  <span>G Coins Discount</span>
+                  <span className="font-bold">−₹{discountAmount.toFixed(2)}</span>
+                </div>
+              )}
+              <div className="flex justify-between items-center pt-1">
+                <span className="font-bold text-[#2d4a30]">Total</span>
+                <span className="font-black text-[#2e7d32] text-2xl" style={{ fontFamily: 'Outfit,sans-serif' }}>
+                  ₹{finalAmount.toFixed(2)}
+                </span>
+              </div>
             </div>
             <Link to="/checkout" className="btn-accent w-full flex items-center justify-center gap-2 !py-3">
               Proceed to Checkout <ArrowRight className="w-4 h-4" />
@@ -113,9 +144,11 @@ export default function Cart() {
       {/* ── Sticky bottom bar (mobile only) ── */}
       <div className="sticky-bottom-bar sm:hidden flex items-center gap-3">
         <div className="flex-grow min-w-0">
-          <p className="text-xs text-[#5f7a60] font-semibold">Total</p>
+          <p className="text-xs text-[#5f7a60] font-semibold">
+            {discountAmount > 0 ? `Total (−₹${discountAmount.toFixed(0)})` : 'Total'}
+          </p>
           <p className="font-black text-[#1a3d1f] text-xl" style={{ fontFamily: 'Outfit,sans-serif' }}>
-            ₹{totalAmount.toFixed(2)}
+            ₹{finalAmount.toFixed(2)}
           </p>
         </div>
         <Link to="/checkout" className="flex-shrink-0 flex items-center gap-2 bg-[#2e7d32] text-white font-black text-sm px-6 py-3 rounded-xl shadow-lg active:scale-95 transition-transform">
